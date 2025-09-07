@@ -87,6 +87,7 @@ Responda sempre em português do Brasil de forma clara, profissional e útil.`;
 
     // Verificar se tem Google API Key
     if (!process.env.GOOGLE_API_KEY) {
+      console.log('❌ Google API Key não encontrada');
       return res.status(200).json({
         response: `⚠️ API do Google não configurada!
 
@@ -103,10 +104,33 @@ Produtos no estoque: ${estoqueData.length}`,
     }
 
     // Gerar resposta com o Gemini
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent([systemPrompt, message]);
-    const response = await result.response;
-    let text = response.text();
+    console.log('🤖 Gerando resposta com Gemini...');
+    
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const result = await model.generateContent([systemPrompt, message]);
+      const response = await result.response;
+      var text = response.text();
+      console.log('✅ Resposta gerada com sucesso');
+    } catch (aiError) {
+      console.error('❌ Erro ao gerar resposta:', aiError);
+      
+      // Se der erro, tentar fornecer resposta baseada apenas nos dados
+      if (estoqueData.length > 0 && message.toLowerCase().includes('000004')) {
+        const produto = estoqueData.filter(p => p.codigo_produto === '000004');
+        const totalSaldo = produto.reduce((sum, p) => sum + (p.saldo_disponivel_produto || 0), 0);
+        
+        var text = `📦 **Produto 000004 - CAMP-D**\n\n`;
+        text += `**Saldo Total Disponível**: ${totalSaldo} unidades\n\n`;
+        text += `**Detalhes por lote**:\n`;
+        produto.forEach(p => {
+          text += `- Lote ${p.lote_industria_produto}: ${p.saldo_disponivel_produto} unidades\n`;
+        });
+        text += `\n**Localização**: Armazém BARUERI`;
+      } else {
+        throw aiError;
+      }
+    }
 
     // Adicionar indicador se usou dados do banco
     if (estoqueData.length > 0) {

@@ -89,19 +89,24 @@ async function sendMessage() {
     statusText.className = 'text-gray-500';
     
     try {
-        // Send to API
+        // Send to API with timeout
         const response = await axios.post('/api/chat', {
             message: message,
             sessionId: sessionId,
             history: chatHistory.slice(-10) // Send last 10 messages for context
+        }, {
+            timeout: 30000 // 30 second timeout
         });
         
         // Hide typing indicator
         typingIndicator.classList.add('hidden');
         
-        if (response.data && response.data.content) {
+        // Check for both 'content' and 'response' fields for compatibility
+        const responseText = response.data.content || response.data.response;
+        
+        if (response.data && responseText) {
             // Add assistant response to UI
-            addMessageToUI(response.data.content, 'assistant');
+            addMessageToUI(responseText, 'assistant');
             
             // Update chat history
             chatHistory.push({
@@ -111,12 +116,25 @@ async function sendMessage() {
             });
             chatHistory.push({
                 role: 'assistant',
-                content: response.data.content,
+                content: responseText,
                 timestamp: response.data.timestamp || new Date().toISOString()
             });
             
-            statusText.textContent = 'Pronto para conversar';
-            statusText.className = 'text-gray-500';
+            // Check if stock was loaded
+            if (response.data.estoqueLoaded) {
+                statusText.textContent = `Pronto para conversar (${response.data.totalProdutos || 0} produtos no estoque)`;
+                statusText.className = 'text-green-600';
+            } else {
+                statusText.textContent = 'Pronto para conversar';
+                statusText.className = 'text-gray-500';
+            }
+            
+            // Log debug info
+            console.log('Response data:', {
+                estoqueLoaded: response.data.estoqueLoaded,
+                totalProdutos: response.data.totalProdutos,
+                dbStatus: response.data.dbStatus
+            });
             
         } else if (response.data && response.data.error) {
             // Show error message
@@ -137,8 +155,16 @@ async function sendMessage() {
         
         let errorMessage = 'Erro ao enviar mensagem. ';
         
+        // Check for timeout error
+        if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+            errorMessage = '⏱️ A resposta demorou muito. Possíveis causas:\n\n';
+            errorMessage += '1. GOOGLE_API_KEY não está configurada no Vercel\n';
+            errorMessage += '2. A API do Google está lenta\n';
+            errorMessage += '3. Problema de conexão\n\n';
+            errorMessage += 'Acesse /debug.html para testar as conexões.';
+        }
         // Extract error message properly
-        if (error.response && error.response.data) {
+        else if (error.response && error.response.data) {
             if (typeof error.response.data === 'string') {
                 errorMessage += error.response.data;
             } else if (error.response.data.error) {
