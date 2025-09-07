@@ -12,20 +12,20 @@ export async function queryDatabase(dbUrl, searchQuery) {
     console.log('Connecting to database...');
     console.log('Search query:', searchQuery);
     
-    // Processar a URL - substituir [YOUR-PASSWORD] pela senha real se necessário
+    // Processar a URL - substituir [YOUR-PASSWORD] pela senha real
     let processedUrl = dbUrl;
     
     // Se a URL tem [YOUR-PASSWORD], substituir pela senha real
     if (dbUrl.includes('[YOUR-PASSWORD]')) {
-      // Senha com @@ precisa ser codificada
-      const encodedPassword = 'Nnyq2122%40%40';
-      processedUrl = dbUrl.replace('[YOUR-PASSWORD]', encodedPassword);
-    } else {
-      // Manter compatibilidade - decodificar %40 para @ se já veio codificado
-      processedUrl = dbUrl.replace(/%40/g, '@');
+      // USAR A SENHA ORIGINAL SEM MODIFICAÇÃO
+      const realPassword = 'Nnyq2122@@';
+      processedUrl = dbUrl.replace('[YOUR-PASSWORD]', realPassword);
+      console.log('Password injected (original format)');
     }
     
+    // Usar a URL exatamente como está, sem decodificar
     const decodedUrl = processedUrl;
+    console.log('Connecting with URL format:', decodedUrl.substring(0, 40) + '...');
     
     // Conecta ao PostgreSQL
     const sql = postgres(decodedUrl, {
@@ -286,20 +286,20 @@ export async function testConnection(dbUrl) {
   try {
     console.log('Testing database connection...');
     
-    // Processar a URL - substituir [YOUR-PASSWORD] pela senha real se necessário
+    // Processar a URL - substituir [YOUR-PASSWORD] pela senha real
     let processedUrl = dbUrl;
     
     // Se a URL tem [YOUR-PASSWORD], substituir pela senha real
     if (dbUrl.includes('[YOUR-PASSWORD]')) {
-      // Senha com @@ precisa ser codificada
-      const encodedPassword = 'Nnyq2122%40%40';
-      processedUrl = dbUrl.replace('[YOUR-PASSWORD]', encodedPassword);
-    } else {
-      // Manter compatibilidade - decodificar %40 para @ se já veio codificado
-      processedUrl = dbUrl.replace(/%40/g, '@');
+      // USAR A SENHA ORIGINAL SEM MODIFICAÇÃO
+      const realPassword = 'Nnyq2122@@';
+      processedUrl = dbUrl.replace('[YOUR-PASSWORD]', realPassword);
+      console.log('Password injected (original format)');
     }
     
+    // Usar a URL exatamente como está, sem decodificar
     const decodedUrl = processedUrl;
+    console.log('Connecting with URL format:', decodedUrl.substring(0, 40) + '...');
     
     const sql = postgres(decodedUrl, {
       ssl: 'require',
