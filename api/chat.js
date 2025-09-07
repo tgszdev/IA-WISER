@@ -75,7 +75,16 @@ export default async function handler(req, res) {
 ${estoqueData.length > 0 ? `
 📦 DADOS COMPLETOS DO ESTOQUE (TODOS OS ${estoqueData.length} REGISTROS):
 =====================================
-${JSON.stringify(estoqueData, null, 2)}
+${JSON.stringify(estoqueData.map(item => ({
+  codigo: item.codigo_produto,
+  descricao: item.descricao_produto,
+  lote: item.lote_industria_produto,
+  disponivel: item.saldo_disponivel_produto,
+  reservado: item.saldo_reservado_produto,
+  bloqueado: item.saldo_bloqueado_produto,
+  armazem: item.armazem,
+  local: item.local_produto
+})))}
 =====================================
 
 INSTRUÇÕES PARA RESPOSTAS ORGANIZADAS E LÓGICAS:
@@ -156,6 +165,18 @@ Produtos no estoque: ${estoqueData.length}`,
     // SEMPRE usar IA para processar TODOS os dados sem limitação
     console.log(`🤖 Enviando TODOS os ${estoqueData.length} registros para a IA processar...`);
     
+    // Log detalhado do que está sendo enviado
+    const debugInfo = {
+      timestamp: new Date().toISOString(),
+      totalRegistros: estoqueData.length,
+      produtosUnicos: [...new Set(estoqueData.map(p => p.codigo_produto))].length,
+      perguntaUsuario: message,
+      primeirosRegistros: estoqueData.slice(0, 3),
+      tamanhoPrompt: systemPrompt.length + message.length
+    };
+    
+    console.log('📊 DEBUG - Dados enviados para IA:', JSON.stringify(debugInfo, null, 2));
+    
     let text = '';
     
     try {
@@ -175,21 +196,44 @@ Produtos no estoque: ${estoqueData.length}`,
                         'PERGUNTA DO USUÁRIO: ' + message + '\n\n' +
                         'RESPONDA DE FORMA ORGANIZADA E LÓGICA USANDO OS DADOS FORNECIDOS.';
       
+      console.log(`📤 Tamanho total do prompt: ${fullPrompt.length} caracteres`);
       console.log(`📤 Processando com IA: ${estoqueData.length} registros completos`);
+      
+      const startTime = Date.now();
       const result = await model.generateContent(fullPrompt);
       const response = await result.response;
       text = response.text();
+      const responseTime = Date.now() - startTime;
+      
       console.log('✅ IA processou todos os dados e gerou resposta organizada');
+      console.log(`⏱️ Tempo de resposta da IA: ${responseTime}ms`);
+      console.log(`📝 Tamanho da resposta: ${text.length} caracteres`);
       
     } catch (aiError) {
       console.error('❌ Erro ao processar com IA:', aiError);
+      console.error('Detalhes do erro:', {
+        message: aiError.message,
+        code: aiError.code,
+        status: aiError.status,
+        stack: aiError.stack
+      });
       
-      // Fallback básico apenas se a IA falhar
-      if (estoqueData.length > 0) {
+      // Tratamento específico para timeout/504
+      if (aiError.message?.includes('504') || aiError.message?.includes('timeout')) {
+        text = `⏱️ **Tempo limite excedido**\n\n`;
+        text += `A requisição demorou muito para processar. Isso pode ocorrer por:\n\n`;
+        text += `1. **Volume de dados**: Processando ${estoqueData.length} registros\n`;
+        text += `2. **Limite do Vercel**: Funções têm timeout de 10s no plano gratuito\n`;
+        text += `3. **Google API lenta**: Modelo processando muitos dados\n\n`;
+        text += `**Solução**: Tente uma pergunta mais específica ou aguarde alguns segundos.`;
+      }
+      // Fallback básico para outros erros
+      else if (estoqueData.length > 0) {
         text = `⚠️ Erro ao processar com IA.\n\n`;
         text += `Informações disponíveis:\n`;
         text += `- Total de registros: ${estoqueData.length}\n`;
         text += `- Produtos únicos: ${[...new Set(estoqueData.map(p => p.codigo_produto))].length}\n`;
+        text += `- Erro: ${aiError.message || 'Desconhecido'}\n`;
         text += `\nPor favor, verifique se a GOOGLE_API_KEY está configurada no Vercel.`;
       } else {
         throw aiError;
