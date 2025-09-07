@@ -1,0 +1,21 @@
+# Comandos para fazer push manual no GitHub
+
+# Opção 1: Com Personal Access Token (Recomendado)
+# 1. Crie um Personal Access Token em: https://github.com/settings/tokens
+# 2. Execute estes comandos substituindo SEU_TOKEN:
+
+git remote set-url origin https://SEU_TOKEN@github.com/tgszdev/IA-WISER.git
+git push -f origin main
+
+# Opção 2: Com GitHub CLI
+gh auth login
+gh repo clone tgszdev/IA-WISER temp --depth=1
+cd /home/user/webapp
+git push -f origin main
+
+# Opção 3: Com SSH Key
+ssh-keygen -t ed25519 -C "your_email@example.com"
+cat ~/.ssh/id_ed25519.pub
+# Adicione a chave em: https://github.com/settings/keys
+git remote set-url origin git@github.com:tgszdev/IA-WISER.git
+git push -f origin main

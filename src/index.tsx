@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { serveStatic } from 'hono/cloudflare-workers'
 import chatRoutes from './routes/chat'
+import chatEnhancedRoutes from './routes/chat-enhanced'
 
 // Types
 type Bindings = {
@@ -22,6 +23,7 @@ app.use('/api/*', cors({
 
 // Mount chat routes
 app.route('/', chatRoutes)
+app.route('/', chatEnhancedRoutes)
 
 // Note: Static files are served directly by Cloudflare Pages
 // No need for serveStatic in production
