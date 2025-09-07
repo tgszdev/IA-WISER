@@ -78,21 +78,42 @@ ${estoqueData.length > 0 ? `
 ${JSON.stringify(estoqueData, null, 2)}
 =====================================
 
-INSTRUÇÕES CRÍTICAS - VOCÊ DEVE:
-1. SEMPRE usar os ${estoqueData.length} registros acima para responder
-2. NUNCA dizer que não tem acesso aos dados - você tem TODOS os dados
-3. Quando perguntado sobre um produto específico:
-   - FILTRAR apenas registros com o código_produto correspondente
-   - SOMAR o saldo_disponivel_produto de todos os lotes desse produto
-   - CONTAR quantos lotes diferentes existem
-4. Para saldo total do estoque:
-   - SOMAR saldo_disponivel_produto de TODOS os ${estoqueData.length} registros
-   - O total correto é aproximadamente 575.698 unidades
-5. Para produto 000004 especificamente:
-   - Existem 29 lotes
-   - Saldo total: 20.100 unidades
-6. IGNORAR valores de texto como "Vencido" ou "Avaria" em cálculos numéricos
-7. Responder SEMPRE em português do Brasil com números formatados corretamente
+INSTRUÇÕES PARA RESPOSTAS ORGANIZADAS E LÓGICAS:
+
+1. ANÁLISE DOS DADOS:
+   - Você tem acesso a TODOS os ${estoqueData.length} registros do estoque
+   - SEMPRE procure nos dados fornecidos antes de responder
+   - NUNCA invente informações - use apenas os dados reais
+
+2. ORGANIZAÇÃO DA RESPOSTA:
+   - Comece com um título claro do que está respondendo
+   - Use formatação markdown para melhor legibilidade
+   - Organize informações em tópicos ou tabelas quando apropriado
+   - Sempre forneça números exatos dos dados
+
+3. CÁLCULOS PRECISOS:
+   - Para saldo de produto: SOME saldo_disponivel_produto de todos os lotes
+   - Para totais: AGRUPE por código_produto e depois some
+   - Ignore textos "Vencido"/"Avaria" em campos numéricos
+   - Formate números no padrão brasileiro (1.234,56)
+
+4. ESTRUTURA LÓGICA:
+   - Resposta direta primeiro (o que foi perguntado)
+   - Detalhes relevantes em seguida
+   - Informações adicionais úteis por último
+   - Sempre em português do Brasil
+
+5. EXEMPLO DE RESPOSTA ORGANIZADA:
+   "📦 **Produto X - Descrição**
+   
+   **Saldo Total**: X.XXX unidades
+   **Lotes**: XX diferentes
+   **Localização**: Armazém Y
+   
+   **Detalhes por Lote**:
+   1. Lote ABC: XXX unidades
+   2. Lote DEF: XXX unidades
+   ..."
 
 CAPACIDADES COM DADOS COMPLETOS:
 - Acesso a TODOS os ${estoqueData.length} registros do estoque
@@ -132,66 +153,46 @@ Produtos no estoque: ${estoqueData.length}`,
       });
     }
 
-    // Verificar perguntas comuns e dar respostas precisas
-    let text = '';
-    const messageLower = message.toLowerCase();
+    // SEMPRE usar IA para processar TODOS os dados sem limitação
+    console.log(`🤖 Enviando TODOS os ${estoqueData.length} registros para a IA processar...`);
     
-    // Resposta direta para perguntas específicas
-    if (estoqueData.length > 0) {
-      if (messageLower.includes('saldo total') && messageLower.includes('estoque') && !messageLower.includes('000004')) {
-        const totalGeral = estoqueData.reduce((sum, p) => sum + p.saldo_disponivel_produto, 0);
-        text = `📊 **Saldo Total do Estoque Completo**\n\n`;
-        text += `**Total Geral Disponível**: ${totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} unidades\n\n`;
-        text += `**Detalhes**:\n`;
+    let text = '';
+    
+    try {
+      // Usar o modelo mais recente e poderoso do Gemini
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash",
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 8192,
+        }
+      });
+      
+      // Criar prompt completo com TODOS os dados
+      const fullPrompt = systemPrompt + '\n\n' + 
+                        'PERGUNTA DO USUÁRIO: ' + message + '\n\n' +
+                        'RESPONDA DE FORMA ORGANIZADA E LÓGICA USANDO OS DADOS FORNECIDOS.';
+      
+      console.log(`📤 Processando com IA: ${estoqueData.length} registros completos`);
+      const result = await model.generateContent(fullPrompt);
+      const response = await result.response;
+      text = response.text();
+      console.log('✅ IA processou todos os dados e gerou resposta organizada');
+      
+    } catch (aiError) {
+      console.error('❌ Erro ao processar com IA:', aiError);
+      
+      // Fallback básico apenas se a IA falhar
+      if (estoqueData.length > 0) {
+        text = `⚠️ Erro ao processar com IA.\n\n`;
+        text += `Informações disponíveis:\n`;
         text += `- Total de registros: ${estoqueData.length}\n`;
         text += `- Produtos únicos: ${[...new Set(estoqueData.map(p => p.codigo_produto))].length}\n`;
-        text += `- Armazém: BARUERI\n\n`;
-        text += `*Nota: Este total considera apenas saldos disponíveis, não incluindo bloqueados ou reservados.*`;
-      } 
-      else if (messageLower.includes('000004')) {
-        const produto = estoqueData.filter(p => p.codigo_produto === '000004');
-        const totalSaldo = produto.reduce((sum, p) => sum + p.saldo_disponivel_produto, 0);
-        text = `📦 **Produto 000004 - CAMP-D - CX 12X1 LT**\n\n`;
-        text += `**Saldo Total Disponível**: ${totalSaldo.toLocaleString('pt-BR')} unidades\n`;
-        text += `**Total de Lotes**: ${produto.length} lotes\n\n`;
-        if (messageLower.includes('lote')) {
-          text += `**Detalhes por Lote**:\n`;
-          produto.forEach((p, i) => {
-            text += `${i+1}. Lote ${p.lote_industria_produto}: ${p.saldo_disponivel_produto} unidades\n`;
-          });
-        }
-        text += `\n**Localização**: Armazém BARUERI`;
-      }
-    }
-    
-    // Se não tiver resposta direta, usar IA
-    if (!text) {
-      console.log('🤖 Gerando resposta com Gemini...');
-      
-      try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const result = await model.generateContent([systemPrompt, message]);
-        const response = await result.response;
-        text = response.text();
-        console.log('✅ Resposta gerada com sucesso');
-      } catch (aiError) {
-        console.error('❌ Erro ao gerar resposta:', aiError);
-      
-      // Se der erro, tentar fornecer resposta baseada apenas nos dados
-      if (estoqueData.length > 0 && message.toLowerCase().includes('000004')) {
-        const produto = estoqueData.filter(p => p.codigo_produto === '000004');
-        const totalSaldo = produto.reduce((sum, p) => sum + (p.saldo_disponivel_produto || 0), 0);
-        
-        var text = `📦 **Produto 000004 - CAMP-D**\n\n`;
-        text += `**Saldo Total Disponível**: ${totalSaldo} unidades\n\n`;
-        text += `**Detalhes por lote**:\n`;
-        produto.forEach(p => {
-          text += `- Lote ${p.lote_industria_produto}: ${p.saldo_disponivel_produto} unidades\n`;
-        });
-        text += `\n**Localização**: Armazém BARUERI`;
-        } else {
-          throw aiError;
-        }
+        text += `\nPor favor, verifique se a GOOGLE_API_KEY está configurada no Vercel.`;
+      } else {
+        throw aiError;
       }
     }
 
