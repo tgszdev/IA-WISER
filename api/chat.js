@@ -1,4 +1,4 @@
-// Chat API com integração ao Supabase
+// Chat API com integração ao Supabase e tratamento de erros melhorado
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { queryDatabase } from './database.js';
 
@@ -80,9 +80,15 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { message, sessionId, history } = req.body;
-
   try {
+    const { message, sessionId, history } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({
+        error: 'Mensagem não pode estar vazia'
+      });
+    }
+
     // Obter configurações
     const apiKey = getConfig('google_api_key');
     const dbUrl = getConfig('db_url');
@@ -185,16 +191,23 @@ Ou configure temporariamente na página de Configurações (ícone ⚙️).`,
     
   } catch (error) {
     console.error('Chat error:', error);
+    console.error('Error stack:', error.stack);
     
     // Tratamento específico de erros
     let errorMessage = 'Erro ao processar mensagem.';
     
-    if (error.message && error.message.includes('API_KEY_INVALID')) {
-      errorMessage = 'API Key inválida. Verifique se copiou corretamente do Google AI Studio.';
-    } else if (error.message && error.message.includes('SAFETY')) {
-      errorMessage = 'A mensagem foi bloqueada por questões de segurança. Tente reformular.';
-    } else if (error.message) {
-      errorMessage = `Erro: ${error.message}`;
+    if (error.message) {
+      if (error.message.includes('API_KEY_INVALID')) {
+        errorMessage = 'API Key inválida. Verifique se copiou corretamente do Google AI Studio.';
+      } else if (error.message.includes('SAFETY')) {
+        errorMessage = 'A mensagem foi bloqueada por questões de segurança. Tente reformular.';
+      } else if (error.message.includes('PERMISSION_DENIED')) {
+        errorMessage = 'API Key sem permissão. Verifique se a API está ativada no Google Cloud.';
+      } else if (error.message.includes('quota')) {
+        errorMessage = 'Cota da API excedida. Aguarde um momento ou verifique seu plano.';
+      } else {
+        errorMessage = `Erro: ${error.message}`;
+      }
     }
     
     return res.status(200).json({

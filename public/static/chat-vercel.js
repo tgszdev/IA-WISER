@@ -86,6 +86,7 @@ async function sendMessage() {
     // Show typing indicator
     typingIndicator.classList.remove('hidden');
     statusText.textContent = 'IA está pensando...';
+    statusText.className = 'text-gray-500';
     
     try {
         // Send to API
@@ -98,18 +99,36 @@ async function sendMessage() {
         // Hide typing indicator
         typingIndicator.classList.add('hidden');
         
-        if (response.data.error) {
+        if (response.data && response.data.content) {
+            // Add assistant response to UI
+            addMessageToUI(response.data.content, 'assistant');
+            
+            // Update chat history
+            chatHistory.push({
+                role: 'user',
+                content: message,
+                timestamp: new Date().toISOString()
+            });
+            chatHistory.push({
+                role: 'assistant',
+                content: response.data.content,
+                timestamp: response.data.timestamp || new Date().toISOString()
+            });
+            
+            statusText.textContent = 'Pronto para conversar';
+            statusText.className = 'text-gray-500';
+            
+        } else if (response.data && response.data.error) {
             // Show error message
-            statusText.textContent = response.data.error;
+            const errorMessage = typeof response.data.error === 'string' ? 
+                response.data.error : 
+                'Erro ao processar mensagem';
+            
+            statusText.textContent = errorMessage;
             statusText.className = 'text-red-600';
             
             // Add error message to chat
-            addMessageToUI(response.data.error, 'assistant');
-        } else {
-            // Add assistant response to UI
-            addMessageToUI(response.data.content, 'assistant');
-            statusText.textContent = 'Pronto para conversar';
-            statusText.className = 'text-gray-500';
+            addMessageToUI(errorMessage, 'assistant');
         }
         
     } catch (error) {
@@ -118,8 +137,19 @@ async function sendMessage() {
         
         let errorMessage = 'Erro ao enviar mensagem. ';
         
-        if (error.response && error.response.data && error.response.data.error) {
-            errorMessage += error.response.data.error;
+        // Extract error message properly
+        if (error.response && error.response.data) {
+            if (typeof error.response.data === 'string') {
+                errorMessage += error.response.data;
+            } else if (error.response.data.error) {
+                errorMessage += error.response.data.error;
+            } else if (error.response.data.message) {
+                errorMessage += error.response.data.message;
+            } else {
+                errorMessage += 'Verifique as configurações.';
+            }
+        } else if (error.message) {
+            errorMessage += error.message;
         } else {
             errorMessage += 'Verifique as configurações.';
         }
@@ -164,6 +194,8 @@ async function checkConfigStatus() {
         }
     } catch (error) {
         console.error('Error checking config:', error);
+        statusText.textContent = 'Verificando configurações...';
+        statusText.className = 'text-gray-500';
     }
 }
 
