@@ -12,8 +12,20 @@ export async function queryDatabase(dbUrl, searchQuery) {
     console.log('Connecting to database...');
     console.log('Search query:', searchQuery);
     
-    // Decodificar a URL se necessário
-    const decodedUrl = dbUrl.replace(/%40/g, '@');
+    // Processar a URL - substituir [YOUR-PASSWORD] pela senha real se necessário
+    let processedUrl = dbUrl;
+    
+    // Se a URL tem [YOUR-PASSWORD], substituir pela senha real
+    if (dbUrl.includes('[YOUR-PASSWORD]')) {
+      // Senha com @@ precisa ser codificada
+      const encodedPassword = 'Nnyq2122%40%40';
+      processedUrl = dbUrl.replace('[YOUR-PASSWORD]', encodedPassword);
+    } else {
+      // Manter compatibilidade - decodificar %40 para @ se já veio codificado
+      processedUrl = dbUrl.replace(/%40/g, '@');
+    }
+    
+    const decodedUrl = processedUrl;
     
     // Conecta ao PostgreSQL
     const sql = postgres(decodedUrl, {
@@ -274,8 +286,20 @@ export async function testConnection(dbUrl) {
   try {
     console.log('Testing database connection...');
     
-    // Decodificar a URL se necessário
-    const decodedUrl = dbUrl.replace(/%40/g, '@');
+    // Processar a URL - substituir [YOUR-PASSWORD] pela senha real se necessário
+    let processedUrl = dbUrl;
+    
+    // Se a URL tem [YOUR-PASSWORD], substituir pela senha real
+    if (dbUrl.includes('[YOUR-PASSWORD]')) {
+      // Senha com @@ precisa ser codificada
+      const encodedPassword = 'Nnyq2122%40%40';
+      processedUrl = dbUrl.replace('[YOUR-PASSWORD]', encodedPassword);
+    } else {
+      // Manter compatibilidade - decodificar %40 para @ se já veio codificado
+      processedUrl = dbUrl.replace(/%40/g, '@');
+    }
+    
+    const decodedUrl = processedUrl;
     
     const sql = postgres(decodedUrl, {
       ssl: 'require',
