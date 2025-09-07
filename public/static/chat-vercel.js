@@ -89,8 +89,8 @@ async function sendMessage() {
     statusText.className = 'text-gray-500';
     
     try {
-        // Send to API with timeout
-        const response = await axios.post('/api/chat', {
+        // Send to API with timeout - Usar nova API smart
+        const response = await axios.post('/api/chat-smart', {
             message: message,
             sessionId: sessionId,
             history: chatHistory.slice(-10) // Send last 10 messages for context
