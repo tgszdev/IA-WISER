@@ -28,14 +28,17 @@ function getConfig(key) {
 
 // Função para construir o prompt completo
 function buildPrompt(systemPrompt, history, databaseContext, userMessage) {
-  let prompt = systemPrompt || "Você é um assistente de IA útil e prestativo. Responda sempre em português do Brasil.";
+  let prompt = "";
   
-  // Se há contexto do banco, instrui a IA a usá-lo DE FORMA ENFÁTICA
+  // Se há contexto do banco, SOBRESCREVER TUDO e FORÇAR uso
   if (databaseContext && databaseContext.results && databaseContext.results.length > 0) {
-    prompt = "INSTRUÇÃO CRÍTICA: Você DEVE usar as informações da base de conhecimento fornecida abaixo. ";
-    prompt += "Sua resposta DEVE ser baseada principalmente nesses dados. ";
-    prompt += "Se a pergunta for sobre algo presente na base de conhecimento, use EXATAMENTE essas informações.\n\n";
-    prompt += systemPrompt || "Você é um assistente de IA útil e prestativo. Responda sempre em português do Brasil.";
+    prompt = "VOCÊ É UM ASSISTENTE QUE RESPONDE BASEADO EXCLUSIVAMENTE NA BASE DE CONHECIMENTO ABAIXO.\n";
+    prompt += "REGRA ABSOLUTA: USE APENAS AS INFORMAÇÕES FORNECIDAS ABAIXO PARA RESPONDER.\n";
+    prompt += "NÃO INVENTE INFORMAÇÕES. SE NÃO ESTIVER NA BASE, DIGA QUE NÃO TEM A INFORMAÇÃO.\n";
+    prompt += "SEMPRE CITE QUAL INFORMAÇÃO DA BASE VOCÊ ESTÁ USANDO.\n\n";
+    prompt += systemPrompt || "Responda sempre em português do Brasil.";
+  } else {
+    prompt = systemPrompt || "Você é um assistente de IA útil e prestativo. Responda sempre em português do Brasil.";
   }
   
   // Adicionar histórico da conversa
@@ -46,28 +49,31 @@ function buildPrompt(systemPrompt, history, databaseContext, userMessage) {
     });
   }
   
-  // Adicionar contexto do banco de dados com ênfase máxima
+  // Adicionar contexto do banco de dados com ênfase ABSOLUTA
   if (databaseContext && databaseContext.results && databaseContext.results.length > 0) {
-    prompt += "\n\n### 🔴 BASE DE CONHECIMENTO OFICIAL - USE OBRIGATORIAMENTE:\n";
-    prompt += "================================================\n";
-    prompt += "AS INFORMAÇÕES ABAIXO SÃO A FONTE DE VERDADE. USE-AS!\n\n";
+    prompt += "\n\n‼️‼️‼️ BASE DE CONHECIMENTO DA EMPRESA - INFORMAÇÕES OFICIAIS ‼️‼️‼️\n";
+    prompt += "================================================================\n";
+    prompt += "🔴 ATENÇÃO: AS INFORMAÇÕES ABAIXO SÃO AS ÚNICAS QUE VOCÊ DEVE USAR!\n";
+    prompt += "🔴 NÃO USE CONHECIMENTO EXTERNO! USE APENAS O QUE ESTÁ ESCRITO ABAIXO!\n\n";
     
     databaseContext.results.forEach((record, index) => {
-      prompt += `\n[REGISTRO ${index + 1}]\n`;
-      prompt += `📌 TÍTULO: ${record.title}\n`;
-      prompt += `📄 CONTEÚDO COMPLETO:\n${record.content}\n`;
+      prompt += `\n⭐ INFORMAÇÃO ${index + 1}:\n`;
+      prompt += `TÍTULO: ${record.title}\n`;
+      prompt += `CONTEÚDO: ${record.content}\n`;
       if (record.category) {
-        prompt += `🏷️ CATEGORIA: ${record.category}\n`;
+        prompt += `CATEGORIA: ${record.category}\n`;
       }
       if (record.tags && record.tags.length > 0) {
-        prompt += `🔖 TAGS: ${record.tags.join(', ')}\n`;
+        prompt += `TAGS: ${record.tags.join(', ')}\n`;
       }
-      prompt += "----------------------------------------\n";
+      prompt += "\n";
     });
     
-    prompt += "\n⚠️ REGRA OBRIGATÓRIA: Você DEVE usar as informações acima em sua resposta. ";
-    prompt += "Se a pergunta está relacionada ao conteúdo acima, cite e use esses dados EXATAMENTE como estão. ";
-    prompt += "NÃO invente informações - use APENAS o que está na base de conhecimento acima.\n";
+    prompt += "\n🔴🔴🔴 INSTRUÇÃO FINAL OBRIGATÓRIA 🔴🔴🔴\n";
+    prompt += "1. USE AS INFORMAÇÕES ACIMA PARA RESPONDER\n";
+    prompt += "2. CITE ESPECIFICAMENTE QUAL INFORMAÇÃO VOCÊ ESTÁ USANDO\n";
+    prompt += "3. NÃO INVENTE DADOS - USE APENAS O QUE FOI FORNECIDO\n";
+    prompt += "4. SE A PERGUNTA NÃO PODE SER RESPONDIDA COM OS DADOS ACIMA, DIGA ISSO\n";
   }
   
   // Adicionar pergunta com instrução final
@@ -145,7 +151,8 @@ Ou configure temporariamente na página de Configurações (ícone ⚙️).`,
     if (dbUrl) {
       try {
         console.log('Querying database for:', message);
-        databaseContext = await queryDatabase(dbUrl, message);
+        // SEMPRE passar uma query, mesmo vazia, para buscar TODOS os dados
+        databaseContext = await queryDatabase(dbUrl, message || '');
         
         if (databaseContext) {
           if (databaseContext.error) {
@@ -153,10 +160,24 @@ Ou configure temporariamente na página de Configurações (ícone ⚙️).`,
             dbStatus = 'error';
           } else if (databaseContext.results && databaseContext.results.length > 0) {
             console.log(`Database returned ${databaseContext.results.length} results`);
+            console.log('FORCING AI to use database context!');
             dbStatus = 'found_data';
+            
+            // LOG DETALHADO para debug
+            console.log('Database content being sent to AI:');
+            databaseContext.results.forEach((r, i) => {
+              console.log(`  ${i+1}. ${r.title}: ${r.content.substring(0, 100)}...`);
+            });
           } else {
-            console.log('Database returned no results');
-            dbStatus = 'no_data';
+            console.log('Database returned no results - trying to fetch ALL');
+            // Tentar buscar TODOS os registros se não achou específicos
+            databaseContext = await queryDatabase(dbUrl, '');
+            if (databaseContext && databaseContext.results && databaseContext.results.length > 0) {
+              dbStatus = 'found_data';
+              console.log(`Got ${databaseContext.results.length} records on second attempt`);
+            } else {
+              dbStatus = 'no_data';
+            }
           }
         }
       } catch (dbError) {

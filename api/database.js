@@ -46,47 +46,25 @@ export async function queryDatabase(dbUrl, searchQuery) {
     const searchTerms = searchQuery.toLowerCase().split(' ').filter(term => term.length > 2);
     console.log('Search terms:', searchTerms);
     
-    // Busca mais ampla - buscar qualquer coincidência
+    // SEMPRE buscar dados - começar com TODOS os registros
     let results = [];
     
-    // Primeira tentativa: busca exata
-    const exactSearchTerm = `%${searchQuery.toLowerCase()}%`;
-    results = await sql`
+    // PRIMEIRO: Buscar TODOS os registros como base
+    console.log('Fetching ALL records to ensure context...');
+    const allRecords = await sql`
       SELECT 
         title,
         content,
         category,
         tags
       FROM knowledge_base
-      WHERE 
-        LOWER(title) LIKE ${exactSearchTerm}
-        OR LOWER(content) LIKE ${exactSearchTerm}
-        OR LOWER(category) LIKE ${exactSearchTerm}
-      ORDER BY 
-        CASE 
-          WHEN LOWER(title) LIKE ${exactSearchTerm} THEN 1
-          WHEN LOWER(category) LIKE ${exactSearchTerm} THEN 2
-          ELSE 3
-        END,
-        created_at DESC
-      LIMIT 5
+      ORDER BY created_at DESC
+      LIMIT 10
     `;
     
-    // Se não encontrou resultados, tenta busca por palavras individuais
-    if (results.length === 0 && searchTerms.length > 0) {
-      console.log('No exact matches, trying individual terms...');
-      
-      // Construir condições para cada termo
-      const conditions = searchTerms.map(term => {
-        const termPattern = `%${term}%`;
-        return sql`(
-          LOWER(title) LIKE ${termPattern}
-          OR LOWER(content) LIKE ${termPattern}
-          OR LOWER(category) LIKE ${termPattern}
-        )`;
-      });
-      
-      // Busca com qualquer um dos termos
+    // DEPOIS: Tentar busca mais específica se houver query
+    if (searchQuery && searchQuery.trim().length > 0) {
+      const exactSearchTerm = `%${searchQuery.toLowerCase()}%`;
       results = await sql`
         SELECT 
           title,
@@ -94,25 +72,31 @@ export async function queryDatabase(dbUrl, searchQuery) {
           category,
           tags
         FROM knowledge_base
-        WHERE ${sql.unsafe(conditions.map(c => c.strings.join('')).join(' OR '))}
-        ORDER BY created_at DESC
+        WHERE 
+          LOWER(title) LIKE ${exactSearchTerm}
+          OR LOWER(content) LIKE ${exactSearchTerm}
+          OR LOWER(category) LIKE ${exactSearchTerm}
+        ORDER BY 
+          CASE 
+            WHEN LOWER(title) LIKE ${exactSearchTerm} THEN 1
+            WHEN LOWER(category) LIKE ${exactSearchTerm} THEN 2
+            ELSE 3
+          END,
+          created_at DESC
         LIMIT 5
       `;
     }
     
-    // Se ainda não encontrou, busca todos os registros como fallback
+    // Se não encontrou matches específicos, usar TODOS os registros
     if (results.length === 0) {
-      console.log('No matches found, fetching all records...');
-      results = await sql`
-        SELECT 
-          title,
-          content,
-          category,
-          tags
-        FROM knowledge_base
-        ORDER BY created_at DESC
-        LIMIT 10
-      `;
+      console.log('Using ALL records as context');
+      results = allRecords;
+    }
+    
+    // GARANTIR que sempre temos dados
+    if (results.length === 0 && allRecords.length > 0) {
+      console.log('FORCING use of all available records');
+      results = allRecords;
     }
     
     // Log detalhado dos resultados para debug
