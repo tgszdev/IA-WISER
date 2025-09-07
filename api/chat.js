@@ -157,10 +157,12 @@ export default async function handler(req, res) {
     let dbUrl = getConfig('db_url');
     const systemPrompt = getConfig('system_prompt');
     
-    // IMPORTANTE: Garantir que a senha está codificada
-    if (dbUrl && dbUrl.includes('Nnyq2122@@')) {
-      console.log('Encoding password @@ to %40%40');
-      dbUrl = dbUrl.replace('Nnyq2122@@', 'Nnyq2122%40%40');
+    // Atualizar para nova senha se ainda tem a antiga
+    if (dbUrl && (dbUrl.includes('Nnyq2122') || dbUrl.includes('%40%40'))) {
+      console.log('Updating to new password');
+      dbUrl = dbUrl
+        .replace(/Nnyq2122%40%40/g, '38016863884')
+        .replace(/Nnyq2122@@/g, '38016863884');
     }
     
     console.log('Config loaded - Has API Key:', !!apiKey, 'Has DB URL:', !!dbUrl);

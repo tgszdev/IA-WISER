@@ -12,27 +12,25 @@ export async function queryDatabase(dbUrl, searchQuery) {
     console.log('Connecting to database...');
     console.log('Search query:', searchQuery);
     
-    // Processar URL - IMPORTANTE: senha com @@ deve ser codificada como %40%40
+    // Processar URL - Nova senha sem caracteres especiais
     let processedUrl = dbUrl;
     
-    // Se a URL contém Nnyq2122@@, precisamos codificar para %40%40
-    if (dbUrl.includes('Nnyq2122@@')) {
-      console.log('Detected raw password with @@, encoding to %40%40');
-      processedUrl = dbUrl.replace('Nnyq2122@@', 'Nnyq2122%40%40');
+    // Se a URL tem [YOUR-PASSWORD], substituir pela nova senha
+    if (dbUrl.includes('[YOUR-PASSWORD]')) {
+      console.log('Replacing [YOUR-PASSWORD] with new password');
+      processedUrl = dbUrl.replace('[YOUR-PASSWORD]', '38016863884');
     }
-    // Se a URL tem [YOUR-PASSWORD], substituir pela senha codificada
-    else if (dbUrl.includes('[YOUR-PASSWORD]')) {
-      console.log('Replacing [YOUR-PASSWORD] with encoded password');
-      processedUrl = dbUrl.replace('[YOUR-PASSWORD]', 'Nnyq2122%40%40');
-    }
-    // Se a URL já tem %40%40, manter como está
-    else if (dbUrl.includes('Nnyq2122%40%40')) {
-      console.log('Password already encoded correctly');
-      processedUrl = dbUrl;
+    // Se ainda tem a senha antiga, atualizar para a nova
+    else if (dbUrl.includes('Nnyq2122') || dbUrl.includes('%40%40')) {
+      console.log('Updating to new password');
+      // Substituir qualquer variação da senha antiga pela nova
+      processedUrl = dbUrl
+        .replace(/Nnyq2122%40%40/g, '38016863884')
+        .replace(/Nnyq2122@@/g, '38016863884');
     }
     
     const decodedUrl = processedUrl;
-    console.log('Connecting to Supabase...');
+    console.log('Connecting to Supabase with updated credentials...');
     
     // Conecta ao PostgreSQL
     const sql = postgres(decodedUrl, {
@@ -293,27 +291,25 @@ export async function testConnection(dbUrl) {
   try {
     console.log('Testing database connection...');
     
-    // Processar URL - IMPORTANTE: senha com @@ deve ser codificada como %40%40
+    // Processar URL - Nova senha sem caracteres especiais
     let processedUrl = dbUrl;
     
-    // Se a URL contém Nnyq2122@@, precisamos codificar para %40%40
-    if (dbUrl.includes('Nnyq2122@@')) {
-      console.log('Detected raw password with @@, encoding to %40%40');
-      processedUrl = dbUrl.replace('Nnyq2122@@', 'Nnyq2122%40%40');
+    // Se a URL tem [YOUR-PASSWORD], substituir pela nova senha
+    if (dbUrl.includes('[YOUR-PASSWORD]')) {
+      console.log('Replacing [YOUR-PASSWORD] with new password');
+      processedUrl = dbUrl.replace('[YOUR-PASSWORD]', '38016863884');
     }
-    // Se a URL tem [YOUR-PASSWORD], substituir pela senha codificada
-    else if (dbUrl.includes('[YOUR-PASSWORD]')) {
-      console.log('Replacing [YOUR-PASSWORD] with encoded password');
-      processedUrl = dbUrl.replace('[YOUR-PASSWORD]', 'Nnyq2122%40%40');
-    }
-    // Se a URL já tem %40%40, manter como está
-    else if (dbUrl.includes('Nnyq2122%40%40')) {
-      console.log('Password already encoded correctly');
-      processedUrl = dbUrl;
+    // Se ainda tem a senha antiga, atualizar para a nova
+    else if (dbUrl.includes('Nnyq2122') || dbUrl.includes('%40%40')) {
+      console.log('Updating to new password');
+      // Substituir qualquer variação da senha antiga pela nova
+      processedUrl = dbUrl
+        .replace(/Nnyq2122%40%40/g, '38016863884')
+        .replace(/Nnyq2122@@/g, '38016863884');
     }
     
     const decodedUrl = processedUrl;
-    console.log('Connecting to Supabase...');
+    console.log('Connecting to Supabase with updated credentials...');
     
     const sql = postgres(decodedUrl, {
       ssl: 'require',

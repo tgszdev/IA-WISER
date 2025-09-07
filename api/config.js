@@ -25,17 +25,19 @@ export default async function handler(req, res) {
       // Prioridade: 1. Memória, 2. Variáveis de Ambiente, 3. Padrão Supabase
       const apiKey = memoryStore.get('google_api_key') || process.env.GOOGLE_API_KEY;
       
-      // IMPORTANTE: Sempre usar senha codificada %40%40 para @@
+      // Obter URL do banco
       let dbUrl = memoryStore.get('db_url') || process.env.DATABASE_URL;
       
-      // Se a URL tem @@ sem codificação, corrigir
-      if (dbUrl && dbUrl.includes('Nnyq2122@@')) {
-        dbUrl = dbUrl.replace('Nnyq2122@@', 'Nnyq2122%40%40');
+      // Se tem senha antiga, atualizar para nova
+      if (dbUrl && (dbUrl.includes('Nnyq2122') || dbUrl.includes('%40%40'))) {
+        dbUrl = dbUrl
+          .replace(/Nnyq2122%40%40/g, '38016863884')
+          .replace(/Nnyq2122@@/g, '38016863884');
       }
       
-      // URL padrão com senha codificada
+      // URL padrão com nova senha
       if (!dbUrl) {
-        dbUrl = 'postgresql://postgres:Nnyq2122%40%40@db.tecvgnrqcfqcrcodrjtt.supabase.co:5432/postgres';
+        dbUrl = 'postgresql://postgres:38016863884@db.tecvgnrqcfqcrcodrjtt.supabase.co:5432/postgres';
       }
       
       const systemPrompt = memoryStore.get('system_prompt') || 
