@@ -168,16 +168,20 @@ async function sendMessage() {
             if (typeof error.response.data === 'string') {
                 errorMessage += error.response.data;
             } else if (error.response.data.error) {
-                errorMessage += error.response.data.error;
+                errorMessage += typeof error.response.data.error === 'string' 
+                    ? error.response.data.error 
+                    : JSON.stringify(error.response.data.error);
             } else if (error.response.data.message) {
-                errorMessage += error.response.data.message;
+                errorMessage += typeof error.response.data.message === 'string'
+                    ? error.response.data.message
+                    : JSON.stringify(error.response.data.message);
             } else {
-                errorMessage += 'Verifique as configurações.';
+                errorMessage += JSON.stringify(error.response.data);
             }
         } else if (error.message) {
             errorMessage += error.message;
         } else {
-            errorMessage += 'Verifique as configurações.';
+            errorMessage += JSON.stringify(error);
         }
         
         statusText.textContent = errorMessage;
