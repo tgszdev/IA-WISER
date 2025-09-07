@@ -24,9 +24,20 @@ export default async function handler(req, res) {
     try {
       // Prioridade: 1. Memória, 2. Variáveis de Ambiente, 3. Padrão Supabase
       const apiKey = memoryStore.get('google_api_key') || process.env.GOOGLE_API_KEY;
-      const dbUrl = memoryStore.get('db_url') || 
-                    process.env.DATABASE_URL || 
-                    'postgresql://postgres:Nnyq2122@@db.tecvgnrqcfqcrcodrjtt.supabase.co:5432/postgres';
+      
+      // IMPORTANTE: Sempre usar senha codificada %40%40 para @@
+      let dbUrl = memoryStore.get('db_url') || process.env.DATABASE_URL;
+      
+      // Se a URL tem @@ sem codificação, corrigir
+      if (dbUrl && dbUrl.includes('Nnyq2122@@')) {
+        dbUrl = dbUrl.replace('Nnyq2122@@', 'Nnyq2122%40%40');
+      }
+      
+      // URL padrão com senha codificada
+      if (!dbUrl) {
+        dbUrl = 'postgresql://postgres:Nnyq2122%40%40@db.tecvgnrqcfqcrcodrjtt.supabase.co:5432/postgres';
+      }
+      
       const systemPrompt = memoryStore.get('system_prompt') || 
                           process.env.SYSTEM_PROMPT || 
                           'Você é um analista de estoque especializado em WMS.';

@@ -12,26 +12,27 @@ export async function queryDatabase(dbUrl, searchQuery) {
     console.log('Connecting to database...');
     console.log('Search query:', searchQuery);
     
-    // Configuração específica do Supabase
-    const SUPABASE_CONFIG = {
-      host: 'db.tecvgnrqcfqcrcodrjtt.supabase.co',
-      port: '5432',
-      database: 'postgres',
-      user: 'postgres',
-      password: 'Nnyq2122@@'
-    };
-    
+    // Processar URL - IMPORTANTE: senha com @@ deve ser codificada como %40%40
     let processedUrl = dbUrl;
     
-    // Se a URL tem [YOUR-PASSWORD] ou está incompleta, construir URL completa
-    if (dbUrl.includes('[YOUR-PASSWORD]') || dbUrl.includes('tecvgnrqcfqcrcodrjtt')) {
-      // Construir URL com dados corretos
-      processedUrl = `postgresql://${SUPABASE_CONFIG.user}:${SUPABASE_CONFIG.password}@${SUPABASE_CONFIG.host}:${SUPABASE_CONFIG.port}/${SUPABASE_CONFIG.database}`;
-      console.log('Using configured Supabase connection');
+    // Se a URL contém Nnyq2122@@, precisamos codificar para %40%40
+    if (dbUrl.includes('Nnyq2122@@')) {
+      console.log('Detected raw password with @@, encoding to %40%40');
+      processedUrl = dbUrl.replace('Nnyq2122@@', 'Nnyq2122%40%40');
+    }
+    // Se a URL tem [YOUR-PASSWORD], substituir pela senha codificada
+    else if (dbUrl.includes('[YOUR-PASSWORD]')) {
+      console.log('Replacing [YOUR-PASSWORD] with encoded password');
+      processedUrl = dbUrl.replace('[YOUR-PASSWORD]', 'Nnyq2122%40%40');
+    }
+    // Se a URL já tem %40%40, manter como está
+    else if (dbUrl.includes('Nnyq2122%40%40')) {
+      console.log('Password already encoded correctly');
+      processedUrl = dbUrl;
     }
     
     const decodedUrl = processedUrl;
-    console.log('Database host:', SUPABASE_CONFIG.host);
+    console.log('Connecting to Supabase...');
     
     // Conecta ao PostgreSQL
     const sql = postgres(decodedUrl, {
@@ -292,26 +293,27 @@ export async function testConnection(dbUrl) {
   try {
     console.log('Testing database connection...');
     
-    // Configuração específica do Supabase
-    const SUPABASE_CONFIG = {
-      host: 'db.tecvgnrqcfqcrcodrjtt.supabase.co',
-      port: '5432',
-      database: 'postgres',
-      user: 'postgres',
-      password: 'Nnyq2122@@'
-    };
-    
+    // Processar URL - IMPORTANTE: senha com @@ deve ser codificada como %40%40
     let processedUrl = dbUrl;
     
-    // Se a URL tem [YOUR-PASSWORD] ou está incompleta, construir URL completa
-    if (dbUrl.includes('[YOUR-PASSWORD]') || dbUrl.includes('tecvgnrqcfqcrcodrjtt')) {
-      // Construir URL com dados corretos
-      processedUrl = `postgresql://${SUPABASE_CONFIG.user}:${SUPABASE_CONFIG.password}@${SUPABASE_CONFIG.host}:${SUPABASE_CONFIG.port}/${SUPABASE_CONFIG.database}`;
-      console.log('Using configured Supabase connection');
+    // Se a URL contém Nnyq2122@@, precisamos codificar para %40%40
+    if (dbUrl.includes('Nnyq2122@@')) {
+      console.log('Detected raw password with @@, encoding to %40%40');
+      processedUrl = dbUrl.replace('Nnyq2122@@', 'Nnyq2122%40%40');
+    }
+    // Se a URL tem [YOUR-PASSWORD], substituir pela senha codificada
+    else if (dbUrl.includes('[YOUR-PASSWORD]')) {
+      console.log('Replacing [YOUR-PASSWORD] with encoded password');
+      processedUrl = dbUrl.replace('[YOUR-PASSWORD]', 'Nnyq2122%40%40');
+    }
+    // Se a URL já tem %40%40, manter como está
+    else if (dbUrl.includes('Nnyq2122%40%40')) {
+      console.log('Password already encoded correctly');
+      processedUrl = dbUrl;
     }
     
     const decodedUrl = processedUrl;
-    console.log('Database host:', SUPABASE_CONFIG.host);
+    console.log('Connecting to Supabase...');
     
     const sql = postgres(decodedUrl, {
       ssl: 'require',
