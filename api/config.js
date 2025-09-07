@@ -1,28 +1,8 @@
-// Configuração temporária usando cookies como fallback se KV não estiver disponível
-let kvAvailable = true;
-let kv;
+// Configuração usando Variáveis de Ambiente da Vercel (mais simples e gratuito)
 
-try {
-  kv = require('@vercel/kv').kv;
-} catch (error) {
-  console.log('Vercel KV não disponível, usando modo de demonstração');
-  kvAvailable = false;
-}
-
-// Simulação de KV para desenvolvimento/demo
-const memoryStore = new Map();
-
-const kvFallback = {
-  async get(key) {
-    return memoryStore.get(key) || null;
-  },
-  async set(key, value) {
-    memoryStore.set(key, value);
-    return 'OK';
-  }
-};
-
-const storage = kvAvailable && kv ? kv : kvFallback;
+// Armazenamento temporário em memória para configurações dinâmicas
+const memoryStore = global.configStore || new Map();
+global.configStore = memoryStore;
 
 export default async function handler(req, res) {
   // Configurar CORS
@@ -42,38 +22,28 @@ export default async function handler(req, res) {
   // GET - Verificar configurações
   if (req.method === 'GET') {
     try {
-      // Se KV não estiver disponível, retorna configuração de demo
-      if (!kvAvailable) {
-        return res.status(200).json({
-          hasApiKey: false,
-          hasDbUrl: false,
-          hasSystemPrompt: false,
-          demoMode: true,
-          message: 'Aplicação em modo demonstração. Configure o Vercel KV para persistência.'
-        });
-      }
-
-      const [apiKey, dbUrl, systemPrompt] = await Promise.all([
-        storage.get('google_api_key'),
-        storage.get('db_url'),
-        storage.get('system_prompt')
-      ]);
+      // Prioridade: 1. Memória, 2. Variáveis de Ambiente
+      const apiKey = memoryStore.get('google_api_key') || process.env.GOOGLE_API_KEY;
+      const dbUrl = memoryStore.get('db_url') || process.env.DATABASE_URL;
+      const systemPrompt = memoryStore.get('system_prompt') || process.env.SYSTEM_PROMPT;
+      const adminPassword = memoryStore.get('admin_password') || process.env.ADMIN_PASSWORD;
       
       return res.status(200).json({
         hasApiKey: !!apiKey,
         hasDbUrl: !!dbUrl,
         hasSystemPrompt: !!systemPrompt,
+        hasAdminPassword: !!adminPassword,
         systemPromptPreview: systemPrompt ? systemPrompt.substring(0, 100) + '...' : null,
-        demoMode: !kvAvailable
+        usingEnvVars: !!(process.env.GOOGLE_API_KEY || process.env.ADMIN_PASSWORD),
+        message: process.env.GOOGLE_API_KEY ? 
+          '✅ Configurado via variáveis de ambiente (permanente)' : 
+          '⚠️ Usando configuração temporária. Configure variáveis de ambiente na Vercel para persistência.'
       });
     } catch (error) {
       console.error('Config check error:', error);
-      return res.status(200).json({
-        hasApiKey: false,
-        hasDbUrl: false,
-        hasSystemPrompt: false,
-        demoMode: true,
-        error: 'Vercel KV não configurado'
+      return res.status(500).json({
+        error: 'Erro ao verificar configurações',
+        details: error.message
       });
     }
   }
@@ -83,60 +53,75 @@ export default async function handler(req, res) {
     const { apiKey, dbUrl, systemPrompt, adminPassword } = req.body;
     
     try {
-      // Se KV não estiver disponível, retorna mensagem explicativa
-      if (!kvAvailable) {
-        return res.status(200).json({ 
-          success: false,
-          demoMode: true,
-          message: 'Configurações não podem ser salvas em modo demo. Configure o Vercel KV primeiro.',
-          instructions: [
-            '1. No dashboard da Vercel, vá em Storage',
-            '2. Crie um banco KV',
-            '3. Conecte ao seu projeto',
-            '4. Faça redeploy'
-          ]
-        });
-      }
-
-      // Verificar senha de admin
-      const storedPassword = await storage.get('admin_password');
+      // Obter senha de admin (da memória ou variável de ambiente)
+      const storedPassword = memoryStore.get('admin_password') || process.env.ADMIN_PASSWORD;
       
-      // Se não houver senha configurada, aceitar a primeira senha fornecida
-      if (!storedPassword && adminPassword) {
-        await storage.set('admin_password', adminPassword);
-      } else if (storedPassword && adminPassword !== storedPassword) {
-        return res.status(401).json({ error: 'Senha de administrador incorreta' });
-      } else if (storedPassword && !adminPassword) {
-        return res.status(401).json({ error: 'Senha de administrador necessária' });
+      // Se não há senha configurada, é a primeira vez
+      if (!storedPassword) {
+        // Define a primeira senha
+        if (adminPassword) {
+          memoryStore.set('admin_password', adminPassword);
+        } else {
+          return res.status(400).json({ 
+            error: 'Por favor, defina uma senha de administrador' 
+          });
+        }
+      } else {
+        // Verifica a senha
+        if (adminPassword !== storedPassword) {
+          return res.status(401).json({ 
+            error: 'Senha de administrador incorreta',
+            hint: process.env.ADMIN_PASSWORD ? 
+              'Use a senha definida nas variáveis de ambiente da Vercel' : 
+              'Use a senha que você definiu anteriormente'
+          });
+        }
       }
       
-      // Salvar configurações
-      const updates = [];
+      // Salvar configurações em memória
+      let saved = [];
       
-      if (apiKey !== undefined) {
-        updates.push(storage.set('google_api_key', apiKey));
+      if (apiKey && apiKey !== '') {
+        memoryStore.set('google_api_key', apiKey);
+        saved.push('API Key');
       }
       
-      if (dbUrl !== undefined) {
-        updates.push(storage.set('db_url', dbUrl));
+      if (dbUrl && dbUrl !== '') {
+        memoryStore.set('db_url', dbUrl);
+        saved.push('Database URL');
       }
       
-      if (systemPrompt !== undefined) {
-        updates.push(storage.set('system_prompt', systemPrompt));
+      if (systemPrompt && systemPrompt !== '') {
+        memoryStore.set('system_prompt', systemPrompt);
+        saved.push('System Prompt');
       }
       
-      await Promise.all(updates);
+      // Verificar se está usando variáveis de ambiente
+      const usingEnvVars = !!(process.env.GOOGLE_API_KEY || process.env.ADMIN_PASSWORD);
       
       return res.status(200).json({ 
         success: true,
-        message: 'Configurações salvas com sucesso!'
+        saved: saved,
+        message: usingEnvVars ? 
+          '✅ Configurações salvas! As variáveis de ambiente têm prioridade.' :
+          '⚠️ Configurações salvas temporariamente (até o próximo deploy).',
+        temporary: !usingEnvVars,
+        instructions: !usingEnvVars ? [
+          'Para configuração permanente:',
+          '1. No dashboard da Vercel, vá em Settings → Environment Variables',
+          '2. Adicione as variáveis:',
+          '   - GOOGLE_API_KEY: Sua API key do Google',
+          '   - ADMIN_PASSWORD: Sua senha de admin',
+          '   - SYSTEM_PROMPT: Prompt do sistema (opcional)',
+          '   - DATABASE_URL: URL do PostgreSQL (opcional)',
+          '3. Faça redeploy para aplicar as variáveis'
+        ] : null
       });
       
     } catch (error) {
       console.error('Config save error:', error);
-      return res.status(200).json({ 
-        success: false,
-        error: 'Erro ao salvar. Verifique se o Vercel KV está configurado.',
+      return res.status(500).json({ 
+        error: 'Erro ao salvar configurações',
         details: error.message
       });
     }

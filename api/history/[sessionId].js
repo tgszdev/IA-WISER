@@ -1,4 +1,6 @@
-import { kv } from '@vercel/kv';
+// Histórico de sessão usando memória (já que Edge Config é read-only)
+const sessionStore = global.sessionStore || new Map();
+global.sessionStore = sessionStore;
 
 export default async function handler(req, res) {
   // Configurar CORS
@@ -23,16 +25,15 @@ export default async function handler(req, res) {
 
   try {
     const sessionKey = `session_${sessionId}`;
-    const history = await kv.get(sessionKey);
+    const history = sessionStore.get(sessionKey) || [];
     
-    if (history) {
-      return res.status(200).json(JSON.parse(history));
-    }
-    
-    return res.status(200).json([]);
+    return res.status(200).json(history);
     
   } catch (error) {
     console.error('History error:', error);
-    return res.status(500).json({ error: 'Erro ao obter histórico' });
+    return res.status(500).json({ 
+      error: 'Erro ao obter histórico',
+      message: 'O histórico é armazenado temporariamente em memória.'
+    });
   }
 }
