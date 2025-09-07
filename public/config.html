@@ -87,6 +87,38 @@
                     <p class="mt-2 text-sm text-gray-500">
                         <strong>Compatível com:</strong> Vercel Postgres, Neon, Supabase.
                     </p>
+                    <details class="mt-3 p-3 bg-blue-50 rounded-lg">
+                        <summary class="text-sm font-medium text-blue-700 cursor-pointer hover:text-blue-900">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Ver exemplos de URL e formato correto
+                        </summary>
+                        <div class="mt-3 space-y-3">
+                            <div class="p-3 bg-white rounded border border-blue-200">
+                                <p class="text-xs font-semibold text-green-700 mb-1">Supabase:</p>
+                                <code class="text-xs text-gray-700 block break-all">
+                                    postgresql://postgres:SuaSenha@db.abcdef123456.supabase.co:5432/postgres
+                                </code>
+                            </div>
+                            <div class="p-3 bg-white rounded border border-blue-200">
+                                <p class="text-xs font-semibold text-green-700 mb-1">Neon:</p>
+                                <code class="text-xs text-gray-700 block break-all">
+                                    postgresql://usuario:senha@projeto-name.neon.tech/neondb
+                                </code>
+                            </div>
+                            <div class="p-3 bg-yellow-50 rounded border border-yellow-300">
+                                <p class="text-xs font-semibold text-yellow-800 mb-1">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                                    Importante:
+                                </p>
+                                <ul class="text-xs text-gray-700 list-disc list-inside space-y-1">
+                                    <li>Se a senha contém @, substitua por %40</li>
+                                    <li>Exemplo: Senha@123 → Senha%40123</li>
+                                    <li>Certifique-se de incluir o host completo</li>
+                                    <li>Use porta 5432 (ou 6543 para pooler)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </details>
                 </div>
                 
                 <!-- System Prompt -->

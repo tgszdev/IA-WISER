@@ -211,13 +211,14 @@ export async function queryDatabase(dbUrl, searchQuery) {
   } catch (error) {
     console.error('Database error:', error);
     console.error('Error details:', error.message);
+    console.error('Database URL format check:', dbUrl ? dbUrl.substring(0, 30) + '...' : 'No URL');
     
     // Tratamento específico de erros
     if (error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
       return {
         query: searchQuery,
         results: [],
-        error: 'Tabela knowledge_base não encontrada. Execute o script SQL no Supabase primeiro.'
+        error: 'Tabela estoque/knowledge_base não encontrada. Verifique se a tabela existe no banco.'
       };
     }
     
@@ -225,22 +226,38 @@ export async function queryDatabase(dbUrl, searchQuery) {
       return {
         query: searchQuery,
         results: [],
-        error: 'Erro de autenticação. Verifique a URL do banco (use %40 para @).'
+        error: 'Erro de autenticação. Verifique a senha na URL (use %40 para @ na senha).'
       };
     }
     
-    if (error.message && error.message.includes('ENOTFOUND')) {
+    if (error.message && (error.message.includes('ENOTFOUND') || error.message.includes('getaddrinfo'))) {
       return {
         query: searchQuery,
         results: [],
-        error: 'Host do banco não encontrado. Verifique a URL.'
+        error: 'Host não encontrado. URL incompleta ou incorreta. Formato correto: postgresql://usuario:senha@db.projeto.supabase.co:5432/postgres'
+      };
+    }
+    
+    if (error.message && error.message.includes('ECONNREFUSED')) {
+      return {
+        query: searchQuery,
+        results: [],
+        error: 'Conexão recusada. Verifique se o banco está ativo e a porta está correta (5432 ou 6543).'
+      };
+    }
+    
+    if (error.message && error.message.includes('timeout')) {
+      return {
+        query: searchQuery,
+        results: [],
+        error: 'Timeout na conexão. Tente usar o Connection Pooler (porta 6543) ou verifique sua internet.'
       };
     }
     
     return {
       query: searchQuery,
       results: [],
-      error: `Erro no banco: ${error.message}`
+      error: `Erro: ${error.message}. Verifique o formato da URL: postgresql://usuario:senha@host:porta/banco`
     };
   }
 }
