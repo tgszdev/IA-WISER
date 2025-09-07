@@ -17,10 +17,16 @@ function showStatus(message, type = 'info') {
     const messageDiv = statusMessage.querySelector('div');
     const messageText = statusMessage.querySelector('p');
     
-    messageText.textContent = message;
+    // Handle multi-line messages or arrays
+    if (Array.isArray(message)) {
+        message = message.join('\n');
+    }
+    
+    messageText.innerHTML = message.replace(/\n/g, '<br>');
     
     // Reset classes
     messageDiv.className = 'p-4 rounded-lg';
+    messageText.className = 'text-sm font-medium';
     
     // Apply type-specific classes
     switch(type) {
@@ -41,10 +47,12 @@ function showStatus(message, type = 'info') {
             messageText.classList.add('text-blue-800');
     }
     
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-        statusMessage.classList.add('hidden');
-    }, 5000);
+    // Don't auto-hide for important messages
+    if (type !== 'error' && type !== 'warning') {
+        setTimeout(() => {
+            statusMessage.classList.add('hidden');
+        }, 8000);
+    }
 }
 
 // Test database connection
@@ -119,6 +127,16 @@ async function saveConfiguration(e) {
             apiKeyInput.value = '';
             dbUrlInput.value = '';
             adminPasswordInput.value = '';
+        } else if (response.data.demoMode) {
+            // Modo demo - mostrar instruções
+            showStatus([
+                '⚠️ Aplicação em modo demonstração',
+                '',
+                'Para salvar configurações, você precisa:',
+                ...response.data.instructions
+            ], 'warning');
+        } else {
+            showStatus(response.data.message || 'Erro ao salvar configurações', 'error');
         }
     } catch (error) {
         let errorMessage = 'Erro ao salvar configurações';
@@ -146,6 +164,17 @@ async function checkConfigurationStatus() {
         
         let statusMessages = [];
         
+        if (data.demoMode) {
+            statusMessages.push('⚠️ MODO DEMONSTRAÇÃO ATIVO');
+            statusMessages.push('');
+            statusMessages.push('Para ativar todas as funcionalidades:');
+            statusMessages.push('1. No dashboard da Vercel, vá em Storage');
+            statusMessages.push('2. Crie um banco KV');
+            statusMessages.push('3. Conecte ao seu projeto');
+            statusMessages.push('4. Faça redeploy');
+            statusMessages.push('');
+        }
+        
         if (data.hasApiKey) {
             statusMessages.push('✅ API do Google configurada');
         } else {
@@ -167,9 +196,10 @@ async function checkConfigurationStatus() {
             statusMessages.push('ℹ️ Usando prompt padrão');
         }
         
-        showStatus(statusMessages.join('\n'), 'info');
+        showStatus(statusMessages, data.demoMode ? 'warning' : 'info');
         
     } catch (error) {
+        console.error('Error checking status:', error);
         showStatus('Erro ao verificar status das configurações', 'error');
     }
 }
@@ -179,6 +209,22 @@ async function loadExistingConfig() {
     try {
         const response = await axios.get('/api/config');
         const data = response.data;
+        
+        // Show demo mode warning if applicable
+        if (data.demoMode) {
+            const warningDiv = document.createElement('div');
+            warningDiv.className = 'mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg';
+            warningDiv.innerHTML = `
+                <h4 class="text-yellow-800 font-semibold mb-2">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Modo Demonstração
+                </h4>
+                <p class="text-yellow-700 text-sm">
+                    As configurações não serão persistidas. Configure o Vercel KV Storage para ativar todas as funcionalidades.
+                </p>
+            `;
+            configForm.parentElement.insertBefore(warningDiv, configForm);
+        }
         
         // Show preview of system prompt if it exists
         if (data.hasSystemPrompt && data.systemPromptPreview) {
@@ -192,6 +238,8 @@ async function loadExistingConfig() {
         
     } catch (error) {
         console.error('Error loading config:', error);
+        // Assume demo mode if can't connect
+        showStatus('Não foi possível carregar configurações. Verifique a conexão.', 'warning');
     }
 }
 

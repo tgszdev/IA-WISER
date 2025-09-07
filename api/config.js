@@ -1,4 +1,28 @@
-import { kv } from '@vercel/kv';
+// Configuração temporária usando cookies como fallback se KV não estiver disponível
+let kvAvailable = true;
+let kv;
+
+try {
+  kv = require('@vercel/kv').kv;
+} catch (error) {
+  console.log('Vercel KV não disponível, usando modo de demonstração');
+  kvAvailable = false;
+}
+
+// Simulação de KV para desenvolvimento/demo
+const memoryStore = new Map();
+
+const kvFallback = {
+  async get(key) {
+    return memoryStore.get(key) || null;
+  },
+  async set(key, value) {
+    memoryStore.set(key, value);
+    return 'OK';
+  }
+};
+
+const storage = kvAvailable && kv ? kv : kvFallback;
 
 export default async function handler(req, res) {
   // Configurar CORS
@@ -18,21 +42,39 @@ export default async function handler(req, res) {
   // GET - Verificar configurações
   if (req.method === 'GET') {
     try {
+      // Se KV não estiver disponível, retorna configuração de demo
+      if (!kvAvailable) {
+        return res.status(200).json({
+          hasApiKey: false,
+          hasDbUrl: false,
+          hasSystemPrompt: false,
+          demoMode: true,
+          message: 'Aplicação em modo demonstração. Configure o Vercel KV para persistência.'
+        });
+      }
+
       const [apiKey, dbUrl, systemPrompt] = await Promise.all([
-        kv.get('google_api_key'),
-        kv.get('db_url'),
-        kv.get('system_prompt')
+        storage.get('google_api_key'),
+        storage.get('db_url'),
+        storage.get('system_prompt')
       ]);
       
       return res.status(200).json({
         hasApiKey: !!apiKey,
         hasDbUrl: !!dbUrl,
         hasSystemPrompt: !!systemPrompt,
-        systemPromptPreview: systemPrompt ? systemPrompt.substring(0, 100) + '...' : null
+        systemPromptPreview: systemPrompt ? systemPrompt.substring(0, 100) + '...' : null,
+        demoMode: !kvAvailable
       });
     } catch (error) {
       console.error('Config check error:', error);
-      return res.status(500).json({ error: 'Erro ao verificar configurações' });
+      return res.status(200).json({
+        hasApiKey: false,
+        hasDbUrl: false,
+        hasSystemPrompt: false,
+        demoMode: true,
+        error: 'Vercel KV não configurado'
+      });
     }
   }
 
@@ -41,12 +83,27 @@ export default async function handler(req, res) {
     const { apiKey, dbUrl, systemPrompt, adminPassword } = req.body;
     
     try {
+      // Se KV não estiver disponível, retorna mensagem explicativa
+      if (!kvAvailable) {
+        return res.status(200).json({ 
+          success: false,
+          demoMode: true,
+          message: 'Configurações não podem ser salvas em modo demo. Configure o Vercel KV primeiro.',
+          instructions: [
+            '1. No dashboard da Vercel, vá em Storage',
+            '2. Crie um banco KV',
+            '3. Conecte ao seu projeto',
+            '4. Faça redeploy'
+          ]
+        });
+      }
+
       // Verificar senha de admin
-      const storedPassword = await kv.get('admin_password');
+      const storedPassword = await storage.get('admin_password');
       
       // Se não houver senha configurada, aceitar a primeira senha fornecida
       if (!storedPassword && adminPassword) {
-        await kv.set('admin_password', adminPassword);
+        await storage.set('admin_password', adminPassword);
       } else if (storedPassword && adminPassword !== storedPassword) {
         return res.status(401).json({ error: 'Senha de administrador incorreta' });
       } else if (storedPassword && !adminPassword) {
@@ -57,24 +114,31 @@ export default async function handler(req, res) {
       const updates = [];
       
       if (apiKey !== undefined) {
-        updates.push(kv.set('google_api_key', apiKey));
+        updates.push(storage.set('google_api_key', apiKey));
       }
       
       if (dbUrl !== undefined) {
-        updates.push(kv.set('db_url', dbUrl));
+        updates.push(storage.set('db_url', dbUrl));
       }
       
       if (systemPrompt !== undefined) {
-        updates.push(kv.set('system_prompt', systemPrompt));
+        updates.push(storage.set('system_prompt', systemPrompt));
       }
       
       await Promise.all(updates);
       
-      return res.status(200).json({ success: true });
+      return res.status(200).json({ 
+        success: true,
+        message: 'Configurações salvas com sucesso!'
+      });
       
     } catch (error) {
       console.error('Config save error:', error);
-      return res.status(500).json({ error: 'Erro ao salvar configurações' });
+      return res.status(200).json({ 
+        success: false,
+        error: 'Erro ao salvar. Verifique se o Vercel KV está configurado.',
+        details: error.message
+      });
     }
   }
 
