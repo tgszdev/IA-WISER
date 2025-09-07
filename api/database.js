@@ -23,8 +23,16 @@ export async function queryDatabase(dbUrl, searchQuery) {
       max: 1
     });
     
-    // Primeiro, verifica se a tabela existe
-    const tableCheck = await sql`
+    // Verificar qual tabela usar - primeiro tenta 'estoque', depois 'knowledge_base'
+    const estoqueCheck = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'estoque'
+      ) as exists
+    `;
+    
+    const knowledgeCheck = await sql`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
         WHERE table_schema = 'public' 
@@ -32,15 +40,21 @@ export async function queryDatabase(dbUrl, searchQuery) {
       ) as exists
     `;
     
-    if (!tableCheck[0].exists) {
-      console.log('Table knowledge_base does not exist');
+    // Determinar qual tabela usar
+    const useEstoque = estoqueCheck[0].exists;
+    const useKnowledge = !useEstoque && knowledgeCheck[0].exists;
+    
+    if (!useEstoque && !useKnowledge) {
+      console.log('No tables found (estoque or knowledge_base)');
       await sql.end();
       return {
         query: searchQuery,
         results: [],
-        error: 'Tabela knowledge_base não encontrada. Execute o script SQL primeiro.'
+        error: 'Nenhuma tabela encontrada (estoque ou knowledge_base).'
       };
     }
+    
+    console.log(`Using table: ${useEstoque ? 'estoque' : 'knowledge_base'}`);
     
     // Preparar termos de busca
     const searchTerms = searchQuery.toLowerCase().split(' ').filter(term => term.length > 2);
@@ -48,43 +62,119 @@ export async function queryDatabase(dbUrl, searchQuery) {
     
     // SEMPRE buscar dados - começar com TODOS os registros
     let results = [];
+    let allRecords = [];
     
     // PRIMEIRO: Buscar TODOS os registros como base
     console.log('Fetching ALL records to ensure context...');
-    const allRecords = await sql`
-      SELECT 
-        title,
-        content,
-        category,
-        tags
-      FROM knowledge_base
-      ORDER BY created_at DESC
-      LIMIT 10
-    `;
     
-    // DEPOIS: Tentar busca mais específica se houver query
-    if (searchQuery && searchQuery.trim().length > 0) {
-      const exactSearchTerm = `%${searchQuery.toLowerCase()}%`;
-      results = await sql`
+    if (useEstoque) {
+      // Buscar dados da tabela ESTOQUE
+      allRecords = await sql`
+        SELECT 
+          codigo_produto,
+          descricao_produto,
+          lote_industria_produto,
+          saldo_disponivel_produto,
+          saldo_reservado_produto,
+          saldo_bloqueado_produto,
+          armazem,
+          rua,
+          local_produto,
+          CONCAT(
+            'Produto: ', descricao_produto, 
+            ' | Código: ', codigo_produto,
+            ' | Lote: ', lote_industria_produto,
+            ' | Saldo Disponível: ', saldo_disponivel_produto,
+            ' | Saldo Reservado: ', COALESCE(saldo_reservado_produto, 0),
+            ' | Saldo Bloqueado: ', COALESCE(saldo_bloqueado_produto, 0),
+            ' | Armazém: ', armazem,
+            ' | Rua: ', rua,
+            ' | Local: ', local_produto
+          ) as content,
+          descricao_produto as title,
+          armazem as category
+        FROM estoque
+        ORDER BY codigo_produto, lote_industria_produto
+        LIMIT 50
+      `;
+    } else {
+      // Buscar dados da tabela knowledge_base (fallback)
+      allRecords = await sql`
         SELECT 
           title,
           content,
           category,
           tags
         FROM knowledge_base
-        WHERE 
-          LOWER(title) LIKE ${exactSearchTerm}
-          OR LOWER(content) LIKE ${exactSearchTerm}
-          OR LOWER(category) LIKE ${exactSearchTerm}
-        ORDER BY 
-          CASE 
-            WHEN LOWER(title) LIKE ${exactSearchTerm} THEN 1
-            WHEN LOWER(category) LIKE ${exactSearchTerm} THEN 2
-            ELSE 3
-          END,
-          created_at DESC
-        LIMIT 5
+        ORDER BY created_at DESC
+        LIMIT 10
       `;
+    }
+    
+    // DEPOIS: Tentar busca mais específica se houver query
+    if (searchQuery && searchQuery.trim().length > 0) {
+      const exactSearchTerm = `%${searchQuery.toLowerCase()}%`;
+      
+      if (useEstoque) {
+        // Busca na tabela ESTOQUE
+        results = await sql`
+          SELECT 
+            codigo_produto,
+            descricao_produto,
+            lote_industria_produto,
+            saldo_disponivel_produto,
+            saldo_reservado_produto,
+            saldo_bloqueado_produto,
+            armazem,
+            rua,
+            local_produto,
+            CONCAT(
+              'Produto: ', descricao_produto, 
+              ' | Código: ', codigo_produto,
+              ' | Lote: ', lote_industria_produto,
+              ' | Saldo Disponível: ', saldo_disponivel_produto,
+              ' | Saldo Reservado: ', COALESCE(saldo_reservado_produto, 0),
+              ' | Saldo Bloqueado: ', COALESCE(saldo_bloqueado_produto, 0),
+              ' | Armazém: ', armazem,
+              ' | Rua: ', rua,
+              ' | Local: ', local_produto
+            ) as content,
+            descricao_produto as title,
+            armazem as category
+          FROM estoque
+          WHERE 
+            LOWER(codigo_produto) LIKE ${exactSearchTerm}
+            OR LOWER(descricao_produto) LIKE ${exactSearchTerm}
+            OR LOWER(lote_industria_produto) LIKE ${exactSearchTerm}
+            OR LOWER(armazem) LIKE ${exactSearchTerm}
+            OR LOWER(rua) LIKE ${exactSearchTerm}
+            OR LOWER(local_produto) LIKE ${exactSearchTerm}
+          ORDER BY codigo_produto, lote_industria_produto
+          LIMIT 20
+        `;
+      } else {
+        // Busca na tabela knowledge_base (fallback)
+        results = await sql`
+          SELECT 
+            title,
+            content,
+            category,
+            tags
+          FROM knowledge_base
+          WHERE 
+            LOWER(title) LIKE ${exactSearchTerm}
+            OR LOWER(content) LIKE ${exactSearchTerm}
+            OR LOWER(category) LIKE ${exactSearchTerm}
+          ORDER BY 
+            CASE 
+              WHEN LOWER(title) LIKE ${exactSearchTerm} THEN 1
+              WHEN LOWER(category) LIKE ${exactSearchTerm} THEN 2
+              ELSE 3
+            END,
+            created_at DESC
+          LIMIT 5
+        `;
+      }
     }
     
     // Se não encontrou matches específicos, usar TODOS os registros
@@ -180,8 +270,16 @@ export async function testConnection(dbUrl) {
     const result = await sql`SELECT NOW() as time, current_database() as database`;
     console.log('Connection successful:', result[0].database);
     
-    // Verifica se a tabela knowledge_base existe
-    const tableExists = await sql`
+    // Verifica quais tabelas existem
+    const estoqueExists = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'estoque'
+      ) as exists
+    `;
+    
+    const knowledgeExists = await sql`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
         WHERE table_schema = 'public' 
@@ -189,11 +287,32 @@ export async function testConnection(dbUrl) {
       ) as exists
     `;
     
-    // Conta registros se a tabela existir
+    // Conta registros da tabela que existir
     let recordCount = 0;
-    if (tableExists[0].exists) {
+    let tableInfo = '';
+    
+    if (estoqueExists[0].exists) {
+      const count = await sql`SELECT COUNT(*) as total FROM estoque`;
+      recordCount = count[0].total;
+      tableInfo = 'Tabela ESTOQUE encontrada';
+      
+      // Buscar estatísticas do estoque
+      const stats = await sql`
+        SELECT 
+          COUNT(DISTINCT codigo_produto) as produtos_unicos,
+          COUNT(DISTINCT armazem) as armazens,
+          SUM(saldo_disponivel_produto) as total_disponivel,
+          SUM(saldo_reservado_produto) as total_reservado
+        FROM estoque
+      `;
+      
+      tableInfo += ` - ${stats[0].produtos_unicos} produtos, ${stats[0].armazens} armazéns`;
+    } else if (knowledgeExists[0].exists) {
       const count = await sql`SELECT COUNT(*) as total FROM knowledge_base`;
       recordCount = count[0].total;
+      tableInfo = 'Tabela KNOWLEDGE_BASE encontrada';
+    } else {
+      tableInfo = 'Nenhuma tabela encontrada';
     }
     
     await sql.end();
@@ -202,7 +321,9 @@ export async function testConnection(dbUrl) {
       success: true,
       message: `Conectado ao banco: ${result[0].database}`,
       serverTime: result[0].time,
-      hasKnowledgeBase: tableExists[0].exists,
+      hasEstoque: estoqueExists[0].exists,
+      hasKnowledgeBase: knowledgeExists[0].exists,
+      tableInfo: tableInfo,
       recordCount: recordCount
     };
     

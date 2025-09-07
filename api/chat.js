@@ -32,11 +32,12 @@ function buildPrompt(systemPrompt, history, databaseContext, userMessage) {
   
   // Se há contexto do banco, SOBRESCREVER TUDO e FORÇAR uso
   if (databaseContext && databaseContext.results && databaseContext.results.length > 0) {
-    prompt = "VOCÊ É UM ASSISTENTE QUE RESPONDE BASEADO EXCLUSIVAMENTE NA BASE DE CONHECIMENTO ABAIXO.\n";
-    prompt += "REGRA ABSOLUTA: USE APENAS AS INFORMAÇÕES FORNECIDAS ABAIXO PARA RESPONDER.\n";
-    prompt += "NÃO INVENTE INFORMAÇÕES. SE NÃO ESTIVER NA BASE, DIGA QUE NÃO TEM A INFORMAÇÃO.\n";
-    prompt += "SEMPRE CITE QUAL INFORMAÇÃO DA BASE VOCÊ ESTÁ USANDO.\n\n";
-    prompt += systemPrompt || "Responda sempre em português do Brasil.";
+    prompt = "VOCÊ É UM ANALISTA DE ESTOQUE ESPECIALIZADO EM WMS.\n";
+    prompt += "VOCÊ TEM ACESSO AOS DADOS REAIS DO ESTOQUE DA EMPRESA LISTADOS ABAIXO.\n";
+    prompt += "REGRA ABSOLUTA: ANALISE E RESPONDA USANDO APENAS OS DADOS DE ESTOQUE FORNECIDOS.\n";
+    prompt += "SEMPRE FORNEÇA NÚMEROS EXATOS, CÓDIGOS DE PRODUTOS, LOTES E LOCALIZAÇÕES.\n";
+    prompt += "SE A PERGUNTA FOR SOBRE UM PRODUTO QUE NÃO ESTÁ NOS DADOS, INFORME ISSO.\n\n";
+    prompt += systemPrompt || "Responda sempre em português do Brasil como um especialista em gestão de estoque.";
   } else {
     prompt = systemPrompt || "Você é um assistente de IA útil e prestativo. Responda sempre em português do Brasil.";
   }
@@ -51,29 +52,61 @@ function buildPrompt(systemPrompt, history, databaseContext, userMessage) {
   
   // Adicionar contexto do banco de dados com ênfase ABSOLUTA
   if (databaseContext && databaseContext.results && databaseContext.results.length > 0) {
-    prompt += "\n\n‼️‼️‼️ BASE DE CONHECIMENTO DA EMPRESA - INFORMAÇÕES OFICIAIS ‼️‼️‼️\n";
+    prompt += "\n\n📦 DADOS REAIS DO ESTOQUE - SISTEMA WMS 📦\n";
     prompt += "================================================================\n";
-    prompt += "🔴 ATENÇÃO: AS INFORMAÇÕES ABAIXO SÃO AS ÚNICAS QUE VOCÊ DEVE USAR!\n";
-    prompt += "🔴 NÃO USE CONHECIMENTO EXTERNO! USE APENAS O QUE ESTÁ ESCRITO ABAIXO!\n\n";
+    prompt += "⚠️ ESTES SÃO OS DADOS REAIS E ATUAIS DO ESTOQUE DA EMPRESA\n";
+    prompt += "⚠️ ANALISE ESTES DADOS PARA RESPONDER AS PERGUNTAS\n\n";
     
-    databaseContext.results.forEach((record, index) => {
-      prompt += `\n⭐ INFORMAÇÃO ${index + 1}:\n`;
-      prompt += `TÍTULO: ${record.title}\n`;
-      prompt += `CONTEÚDO: ${record.content}\n`;
-      if (record.category) {
-        prompt += `CATEGORIA: ${record.category}\n`;
-      }
-      if (record.tags && record.tags.length > 0) {
-        prompt += `TAGS: ${record.tags.join(', ')}\n`;
-      }
-      prompt += "\n";
-    });
+    // Verificar se é tabela estoque pelos campos
+    const isEstoque = databaseContext.results[0] && 
+                     (databaseContext.results[0].codigo_produto || 
+                      databaseContext.results[0].content?.includes('Código:'));
     
-    prompt += "\n🔴🔴🔴 INSTRUÇÃO FINAL OBRIGATÓRIA 🔴🔴🔴\n";
-    prompt += "1. USE AS INFORMAÇÕES ACIMA PARA RESPONDER\n";
-    prompt += "2. CITE ESPECIFICAMENTE QUAL INFORMAÇÃO VOCÊ ESTÁ USANDO\n";
-    prompt += "3. NÃO INVENTE DADOS - USE APENAS O QUE FOI FORNECIDO\n";
-    prompt += "4. SE A PERGUNTA NÃO PODE SER RESPONDIDA COM OS DADOS ACIMA, DIGA ISSO\n";
+    if (isEstoque) {
+      prompt += "DADOS DO ESTOQUE DISPONÍVEIS:\n";
+      prompt += "=====================================\n";
+      databaseContext.results.forEach((record, index) => {
+        if (record.codigo_produto) {
+          // Dados diretos da tabela estoque
+          prompt += `\n[ITEM ${index + 1}]\n`;
+          prompt += `Código: ${record.codigo_produto}\n`;
+          prompt += `Descrição: ${record.descricao_produto}\n`;
+          prompt += `Lote: ${record.lote_industria_produto}\n`;
+          prompt += `Saldo Disponível: ${record.saldo_disponivel_produto} unidades\n`;
+          prompt += `Saldo Reservado: ${record.saldo_reservado_produto || 0} unidades\n`;
+          prompt += `Saldo Bloqueado: ${record.saldo_bloqueado_produto || 0} unidades\n`;
+          prompt += `Armazém: ${record.armazem}\n`;
+          prompt += `Rua: ${record.rua}\n`;
+          prompt += `Local: ${record.local_produto}\n`;
+        } else {
+          // Dados formatados como content
+          prompt += `\n[REGISTRO ${index + 1}]\n`;
+          prompt += `${record.content}\n`;
+        }
+        prompt += "---\n";
+      });
+    } else {
+      // Formato genérico para outras tabelas
+      databaseContext.results.forEach((record, index) => {
+        prompt += `\n⭐ INFORMAÇÃO ${index + 1}:\n`;
+        prompt += `TÍTULO: ${record.title}\n`;
+        prompt += `CONTEÚDO: ${record.content}\n`;
+        if (record.category) {
+          prompt += `CATEGORIA: ${record.category}\n`;
+        }
+        if (record.tags && record.tags.length > 0) {
+          prompt += `TAGS: ${record.tags.join(', ')}\n`;
+        }
+        prompt += "\n";
+      });
+    }
+    
+    prompt += "\n📈 INSTRUÇÕES PARA ANÁLISE DE ESTOQUE:\n";
+    prompt += "1. ANALISE OS DADOS DE ESTOQUE ACIMA\n";
+    prompt += "2. FORNEÇA NÚMEROS EXATOS E LOCALIZAÇÕES PRECISAS\n";
+    prompt += "3. SE PERGUNTADO SOBRE TOTAIS, SOME OS VALORES\n";
+    prompt += "4. SE PERGUNTADO SOBRE PRODUTOS ESPECÍFICOS, FILTRE OS DADOS\n";
+    prompt += "5. SEMPRE MENCIONE CÓDIGOS, LOTES E ARMAZÉNS\n";
   }
   
   // Adicionar pergunta com instrução final
