@@ -32,8 +32,8 @@ export default async function handler(req, res) {
     let dbStatus = 'not_connected';
     
     try {
-      console.log('🔄 Buscando dados do estoque via Supabase...');
-      estoqueData = await getEstoqueData(100);
+      console.log('🔄 Buscando TODOS os dados do estoque via Supabase (sem limite)...');
+      estoqueData = await getEstoqueData(); // Sem limite - busca todos os registros
       
       if (estoqueData && estoqueData.length > 0) {
         console.log(`✅ ${estoqueData.length} produtos carregados do estoque`);
@@ -51,27 +51,30 @@ export default async function handler(req, res) {
     }
 
     // Criar contexto do sistema com os dados do estoque
-    let systemPrompt = `Você é o Wiser IA Assistant, um assistente especializado em gerenciamento de estoque.
+    let systemPrompt = `Você é o Wiser IA Assistant, um assistente especializado em gerenciamento de estoque com acesso COMPLETO a TODOS os dados.
     
 ${estoqueData.length > 0 ? `
-📦 DADOS REAIS DO ESTOQUE (${estoqueData.length} produtos):
+📦 DADOS COMPLETOS DO ESTOQUE (TODOS OS ${estoqueData.length} REGISTROS):
 =====================================
 ${JSON.stringify(estoqueData, null, 2)}
 =====================================
 
-INSTRUÇÕES IMPORTANTES:
-1. Use SEMPRE os dados acima para responder sobre o estoque
-2. Cite produtos específicos, quantidades e informações exatas
-3. Se perguntado sobre um produto que não está na lista, informe que não está no estoque
-4. Forneça análises detalhadas quando solicitado
-5. Sempre responda em português do Brasil
+INSTRUÇÕES CRÍTICAS - VOCÊ DEVE:
+1. SEMPRE usar os ${estoqueData.length} registros acima para responder
+2. NUNCA dizer que não tem acesso aos dados - você tem TODOS os dados
+3. Quando perguntado sobre um produto, PROCURE em TODOS os registros
+4. Fornecer NÚMEROS EXATOS: quantidades, lotes, localizações
+5. SOMAR todos os lotes quando perguntado sobre saldo total
+6. LISTAR todos os lotes quando perguntado sobre detalhes
+7. Responder SEMPRE em português do Brasil
 
-CAPACIDADES:
-- Listar produtos disponíveis
-- Informar quantidades em estoque
-- Buscar produtos por nome ou categoria
-- Calcular totais e estatísticas
-- Sugerir produtos relacionados
+CAPACIDADES COM DADOS COMPLETOS:
+- Acesso a TODOS os ${estoqueData.length} registros do estoque
+- Buscar qualquer produto por código ou descrição
+- Calcular saldos totais somando todos os lotes
+- Listar todos os lotes de um produto
+- Analisar produtos vencidos ou com avaria
+- Estatísticas completas do inventário
 ` : `
 ⚠️ ATENÇÃO: Não foi possível carregar os dados do estoque.
 

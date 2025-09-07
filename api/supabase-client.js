@@ -28,19 +28,23 @@ export const supabase = supabaseAnonKey
   : null;
 
 // Função para buscar todos os dados do estoque
-export async function getEstoqueData(limit = 100) {
+export async function getEstoqueData(limit = null) {
   if (!supabase) {
     console.error('Supabase client not initialized');
     return [];
   }
 
   try {
-    console.log('📊 Buscando dados do estoque...');
+    console.log('📊 Buscando TODOS os dados do estoque...');
     
-    const { data, error } = await supabase
-      .from('estoque')
-      .select('*')
-      .limit(limit);
+    // Se limit for null, busca todos os registros sem limitação
+    let query = supabase.from('estoque').select('*');
+    
+    if (limit && limit > 0) {
+      query = query.limit(limit);
+    }
+    
+    const { data, error } = await query;
 
     if (error) {
       console.error('❌ Supabase query error:', error);

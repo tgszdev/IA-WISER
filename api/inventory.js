@@ -27,8 +27,8 @@ export default async function handler(req, res) {
       });
     }
 
-    // Fetch inventory data
-    const products = await getEstoqueData(1000);
+    // Fetch ALL inventory data without limit
+    const products = await getEstoqueData(); // Sem limite - busca todos os registros
     
     if (!products || products.length === 0) {
       return res.status(200).json({

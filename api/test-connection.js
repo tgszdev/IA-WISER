@@ -44,7 +44,7 @@ export default async function handler(req, res) {
         if (result.success) {
           // Try to get record count
           const data = await getEstoqueData(1);
-          const fullData = await getEstoqueData(1000);
+          const fullData = await getEstoqueData(); // Busca TODOS os registros sem limite
           
           return res.status(200).json({
             success: true,
