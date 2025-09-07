@@ -1,3 +1,5 @@
+import { testConnection } from './database.js';
+
 export default async function handler(req, res) {
   // Configurar CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -20,39 +22,40 @@ export default async function handler(req, res) {
   const { dbUrl } = req.body;
 
   try {
-    // Testar conexão com o banco
-    // Para Neon, Supabase, etc., você faria uma requisição HTTP
-    // Este é um exemplo simplificado
+    // Usa a URL fornecida ou a variável de ambiente
+    const connectionString = dbUrl || process.env.DATABASE_URL;
     
-    if (!dbUrl) {
+    if (!connectionString) {
       return res.status(400).json({ 
         success: false, 
         message: 'URL de conexão não fornecida' 
       });
     }
-
-    // Validar formato da URL
-    const url = new URL(dbUrl);
-    if (!url.protocol.startsWith('postgresql')) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'URL deve ser uma conexão PostgreSQL válida' 
-      });
-    }
-
-    // Em produção, você faria uma conexão real aqui
-    // Por exemplo, usando @vercel/postgres ou a API do seu provedor
     
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Formato de conexão válido. Configure o banco no provedor escolhido.',
-      serverTime: new Date().toISOString()
-    });
+    // Testa a conexão
+    const result = await testConnection(connectionString);
+    
+    if (result.success) {
+      let message = result.message;
+      
+      if (!result.hasKnowledgeBase) {
+        message += '\n⚠️ Tabela knowledge_base não encontrada. Execute o script SQL no Supabase.';
+      } else {
+        message += '\n✅ Tabela knowledge_base encontrada!';
+      }
+      
+      return res.status(200).json({
+        ...result,
+        message
+      });
+    } else {
+      return res.status(400).json(result);
+    }
     
   } catch (error) {
-    return res.status(400).json({ 
+    return res.status(500).json({ 
       success: false, 
-      message: `Erro de conexão: ${error.message}` 
+      message: `Erro: ${error.message}` 
     });
   }
 }

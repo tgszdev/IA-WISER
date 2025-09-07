@@ -1,5 +1,6 @@
-// Chat API usando variáveis de ambiente e memória
+// Chat API com integração ao Supabase
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { queryDatabase } from './database.js';
 
 // Armazenamento em memória para sessões e configurações
 const sessionStore = global.sessionStore || new Map();
@@ -25,23 +26,6 @@ function getConfig(key) {
   return configStore.get(key) || envMap[key] || null;
 }
 
-// Função para buscar contexto do banco de dados
-async function fetchDatabaseContext(dbUrl, query) {
-  if (!dbUrl) return null;
-  
-  try {
-    // Aqui você integraria com seu banco real
-    // Por enquanto, retorna dados de exemplo
-    return {
-      query: query,
-      results: []
-    };
-  } catch (error) {
-    console.error('Database error:', error);
-    return null;
-  }
-}
-
 // Função para construir o prompt completo
 function buildPrompt(systemPrompt, history, databaseContext, userMessage) {
   let prompt = systemPrompt || "Você é um assistente de IA útil e prestativo.";
@@ -55,16 +39,21 @@ function buildPrompt(systemPrompt, history, databaseContext, userMessage) {
   }
   
   // Adicionar contexto do banco de dados
-  if (databaseContext && databaseContext.results.length > 0) {
-    prompt += "\n\n### Dados de Contexto do Banco de Dados:\n";
+  if (databaseContext && databaseContext.results && databaseContext.results.length > 0) {
+    prompt += "\n\n### Informações Relevantes da Base de Conhecimento:\n";
     databaseContext.results.forEach((record, index) => {
-      prompt += `---\nRegistro ${index + 1}:\n`;
-      Object.entries(record).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          prompt += `${key}: ${value}\n`;
-        }
-      });
+      prompt += `\n**${record.title}**\n`;
+      prompt += `${record.content}\n`;
+      if (record.category) {
+        prompt += `Categoria: ${record.category}\n`;
+      }
+      if (record.tags && record.tags.length > 0) {
+        prompt += `Tags: ${record.tags.join(', ')}\n`;
+      }
+      prompt += "---\n";
     });
+    
+    prompt += "\nUse as informações acima para responder a pergunta do usuário de forma precisa.";
   }
   
   prompt += `\n\n### Nova Pergunta do Usuário:\n${userMessage}`;
@@ -117,8 +106,20 @@ Ou configure temporariamente na página de Configurações (ícone ⚙️).`,
       });
     }
     
-    // Buscar contexto do banco de dados
-    const databaseContext = dbUrl ? await fetchDatabaseContext(dbUrl, message) : null;
+    // Buscar contexto do banco de dados se configurado
+    let databaseContext = null;
+    if (dbUrl) {
+      try {
+        databaseContext = await queryDatabase(dbUrl, message);
+        
+        if (databaseContext && databaseContext.error) {
+          console.log('Database query warning:', databaseContext.error);
+        }
+      } catch (dbError) {
+        console.error('Database query error:', dbError);
+        // Continua sem o contexto do banco
+      }
+    }
     
     // Construir prompt
     const fullPrompt = buildPrompt(
@@ -141,7 +142,8 @@ Ou configure temporariamente na página de Configurações (ícone ⚙️).`,
       id: generateId(),
       role: 'assistant',
       content: text,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      hasContext: !!(databaseContext && databaseContext.results && databaseContext.results.length > 0)
     };
     
     // Salvar no histórico da sessão (em memória)
