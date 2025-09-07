@@ -1,28 +1,56 @@
 // Integração com Supabase - Múltiplas estratégias de conexão
 import postgres from 'postgres';
+import { queryEstoque, testDirectConnection } from './database-direct.js';
 import { queryDatabaseHTTP, testConnectionHTTP } from './database-http.js';
 import { queryDatabaseSupabase, testConnectionSupabase } from './database-supabase-client.js';
 
 // Função para conectar ao banco - tenta múltiplas estratégias
 export async function queryDatabase(dbUrl, searchQuery) {
-  // Estratégia 1: Tentar conexão HTTP primeiro (mais confiável)
-  if (process.env.SUPABASE_ANON_KEY || process.env.USE_HTTP_API === 'true') {
-    console.log('Trying HTTP REST API connection first...');
+  // Estratégia 1: Conexão PostgreSQL DIRETA (como Supabase recomenda)
+  console.log('Trying direct PostgreSQL connection...');
+  try {
+    const directResult = await queryEstoque(searchQuery);
+    if (directResult && directResult.success && directResult.results) {
+      console.log('Direct PostgreSQL successful!');
+      return {
+        query: searchQuery,
+        results: directResult.results,
+        totalFound: directResult.totalFound
+      };
+    }
+  } catch (directError) {
+    console.log('Direct connection failed:', directError.message);
+  }
+  
+  // Estratégia 2: Tentar Supabase Client
+  if (process.env.SUPABASE_ANON_KEY) {
+    console.log('Trying Supabase Client...');
     try {
-      const httpResult = await queryDatabaseHTTP(searchQuery);
-      if (httpResult && httpResult.results && httpResult.results.length > 0) {
-        console.log('HTTP API successful!');
-        return httpResult;
+      const supabaseResult = await queryDatabaseSupabase(searchQuery);
+      if (supabaseResult && supabaseResult.results) {
+        return supabaseResult;
       }
-    } catch (httpError) {
-      console.log('HTTP API failed, trying PostgreSQL...');
+    } catch (supabaseError) {
+      console.log('Supabase Client failed:', supabaseError.message);
     }
   }
   
-  // Estratégia 2: Conexão PostgreSQL tradicional
+  // Estratégia 3: HTTP API como último recurso
+  console.log('Trying HTTP API as fallback...');
+  try {
+    return await queryDatabaseHTTP(searchQuery);
+  } catch (httpError) {
+    console.log('All connection methods failed');
+  }
+  
+  // Se tudo falhar, tentar conexão PostgreSQL tradicional
   if (!dbUrl) {
-    console.log('No database URL provided, trying HTTP API only');
-    return queryDatabaseHTTP(searchQuery);
+    console.log('No database URL provided');
+    return {
+      query: searchQuery,
+      results: [],
+      error: 'Nenhuma conexão funcionou'
+    };
   }
   
   try {
