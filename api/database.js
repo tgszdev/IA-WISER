@@ -1,11 +1,28 @@
-// Integração com PostgreSQL (Supabase) - Versão corrigida
+// Integração com Supabase - Múltiplas estratégias de conexão
 import postgres from 'postgres';
+import { queryDatabaseHTTP, testConnectionHTTP } from './database-http.js';
+import { queryDatabaseSupabase, testConnectionSupabase } from './database-supabase-client.js';
 
-// Função para conectar ao banco
+// Função para conectar ao banco - tenta múltiplas estratégias
 export async function queryDatabase(dbUrl, searchQuery) {
+  // Estratégia 1: Tentar conexão HTTP primeiro (mais confiável)
+  if (process.env.SUPABASE_ANON_KEY || process.env.USE_HTTP_API === 'true') {
+    console.log('Trying HTTP REST API connection first...');
+    try {
+      const httpResult = await queryDatabaseHTTP(searchQuery);
+      if (httpResult && httpResult.results && httpResult.results.length > 0) {
+        console.log('HTTP API successful!');
+        return httpResult;
+      }
+    } catch (httpError) {
+      console.log('HTTP API failed, trying PostgreSQL...');
+    }
+  }
+  
+  // Estratégia 2: Conexão PostgreSQL tradicional
   if (!dbUrl) {
-    console.log('No database URL provided');
-    return null;
+    console.log('No database URL provided, trying HTTP API only');
+    return queryDatabaseHTTP(searchQuery);
   }
   
   try {
@@ -279,12 +296,31 @@ export async function queryDatabase(dbUrl, searchQuery) {
   }
 }
 
-// Função para testar conexão
+// Função para testar conexão - tenta vários métodos
 export async function testConnection(dbUrl) {
+  console.log('Testing multiple connection methods...');
+  
+  // Método 1: Supabase Client
+  if (process.env.SUPABASE_ANON_KEY) {
+    console.log('Testing Supabase Client...');
+    const supabaseTest = await testConnectionSupabase();
+    if (supabaseTest.success) {
+      return supabaseTest;
+    }
+  }
+  
+  // Método 2: HTTP REST API
+  console.log('Testing HTTP REST API...');
+  const httpTest = await testConnectionHTTP();
+  if (httpTest.success) {
+    return httpTest;
+  }
+  
+  // Método 3: PostgreSQL Direct (se tiver URL)
   if (!dbUrl) {
     return {
       success: false,
-      message: 'URL de conexão não fornecida'
+      message: 'Nenhuma conexão funcionou. Configure SUPABASE_ANON_KEY ou DATABASE_URL.'
     };
   }
   
