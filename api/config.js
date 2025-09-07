@@ -22,10 +22,14 @@ export default async function handler(req, res) {
   // GET - Verificar configurações
   if (req.method === 'GET') {
     try {
-      // Prioridade: 1. Memória, 2. Variáveis de Ambiente
+      // Prioridade: 1. Memória, 2. Variáveis de Ambiente, 3. Padrão Supabase
       const apiKey = memoryStore.get('google_api_key') || process.env.GOOGLE_API_KEY;
-      const dbUrl = memoryStore.get('db_url') || process.env.DATABASE_URL;
-      const systemPrompt = memoryStore.get('system_prompt') || process.env.SYSTEM_PROMPT;
+      const dbUrl = memoryStore.get('db_url') || 
+                    process.env.DATABASE_URL || 
+                    'postgresql://postgres:Nnyq2122@@db.tecvgnrqcfqcrcodrjtt.supabase.co:5432/postgres';
+      const systemPrompt = memoryStore.get('system_prompt') || 
+                          process.env.SYSTEM_PROMPT || 
+                          'Você é um analista de estoque especializado em WMS.';
       const adminPassword = memoryStore.get('admin_password') || process.env.ADMIN_PASSWORD;
       
       return res.status(200).json({

@@ -1,0 +1,30 @@
+{
+  "connection": {
+    "host": "db.tecvgnrqcfqcrcodrjtt.supabase.co",
+    "port": 5432,
+    "database": "postgres",
+    "user": "postgres",
+    "password": "Nnyq2122@@",
+    "ssl": "require"
+  },
+  "connectionString": "postgresql://postgres:Nnyq2122@@db.tecvgnrqcfqcrcodrjtt.supabase.co:5432/postgres",
+  "project": {
+    "name": "Wiser IA - Estoque",
+    "region": "South America",
+    "id": "tecvgnrqcfqcrcodrjtt"
+  },
+  "tables": {
+    "primary": "estoque",
+    "fields": [
+      "codigo_produto",
+      "descricao_produto",
+      "lote_industria_produto",
+      "saldo_disponivel_produto",
+      "saldo_reservado_produto",
+      "saldo_bloqueado_produto",
+      "armazem",
+      "rua",
+      "local_produto"
+    ]
+  }
+}

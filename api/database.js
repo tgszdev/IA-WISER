@@ -12,20 +12,26 @@ export async function queryDatabase(dbUrl, searchQuery) {
     console.log('Connecting to database...');
     console.log('Search query:', searchQuery);
     
-    // Processar a URL - substituir [YOUR-PASSWORD] pela senha real
+    // Configuração específica do Supabase
+    const SUPABASE_CONFIG = {
+      host: 'db.tecvgnrqcfqcrcodrjtt.supabase.co',
+      port: '5432',
+      database: 'postgres',
+      user: 'postgres',
+      password: 'Nnyq2122@@'
+    };
+    
     let processedUrl = dbUrl;
     
-    // Se a URL tem [YOUR-PASSWORD], substituir pela senha real
-    if (dbUrl.includes('[YOUR-PASSWORD]')) {
-      // USAR A SENHA ORIGINAL SEM MODIFICAÇÃO
-      const realPassword = 'Nnyq2122@@';
-      processedUrl = dbUrl.replace('[YOUR-PASSWORD]', realPassword);
-      console.log('Password injected (original format)');
+    // Se a URL tem [YOUR-PASSWORD] ou está incompleta, construir URL completa
+    if (dbUrl.includes('[YOUR-PASSWORD]') || dbUrl.includes('tecvgnrqcfqcrcodrjtt')) {
+      // Construir URL com dados corretos
+      processedUrl = `postgresql://${SUPABASE_CONFIG.user}:${SUPABASE_CONFIG.password}@${SUPABASE_CONFIG.host}:${SUPABASE_CONFIG.port}/${SUPABASE_CONFIG.database}`;
+      console.log('Using configured Supabase connection');
     }
     
-    // Usar a URL exatamente como está, sem decodificar
     const decodedUrl = processedUrl;
-    console.log('Connecting with URL format:', decodedUrl.substring(0, 40) + '...');
+    console.log('Database host:', SUPABASE_CONFIG.host);
     
     // Conecta ao PostgreSQL
     const sql = postgres(decodedUrl, {
@@ -286,20 +292,26 @@ export async function testConnection(dbUrl) {
   try {
     console.log('Testing database connection...');
     
-    // Processar a URL - substituir [YOUR-PASSWORD] pela senha real
+    // Configuração específica do Supabase
+    const SUPABASE_CONFIG = {
+      host: 'db.tecvgnrqcfqcrcodrjtt.supabase.co',
+      port: '5432',
+      database: 'postgres',
+      user: 'postgres',
+      password: 'Nnyq2122@@'
+    };
+    
     let processedUrl = dbUrl;
     
-    // Se a URL tem [YOUR-PASSWORD], substituir pela senha real
-    if (dbUrl.includes('[YOUR-PASSWORD]')) {
-      // USAR A SENHA ORIGINAL SEM MODIFICAÇÃO
-      const realPassword = 'Nnyq2122@@';
-      processedUrl = dbUrl.replace('[YOUR-PASSWORD]', realPassword);
-      console.log('Password injected (original format)');
+    // Se a URL tem [YOUR-PASSWORD] ou está incompleta, construir URL completa
+    if (dbUrl.includes('[YOUR-PASSWORD]') || dbUrl.includes('tecvgnrqcfqcrcodrjtt')) {
+      // Construir URL com dados corretos
+      processedUrl = `postgresql://${SUPABASE_CONFIG.user}:${SUPABASE_CONFIG.password}@${SUPABASE_CONFIG.host}:${SUPABASE_CONFIG.port}/${SUPABASE_CONFIG.database}`;
+      console.log('Using configured Supabase connection');
     }
     
-    // Usar a URL exatamente como está, sem decodificar
     const decodedUrl = processedUrl;
-    console.log('Connecting with URL format:', decodedUrl.substring(0, 40) + '...');
+    console.log('Database host:', SUPABASE_CONFIG.host);
     
     const sql = postgres(decodedUrl, {
       ssl: 'require',
