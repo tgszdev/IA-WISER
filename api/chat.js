@@ -1,4 +1,4 @@
-// Chat API com integração ao Supabase e tratamento de erros melhorado
+// Chat API com integração ao Supabase e modelo Gemini atualizado
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { queryDatabase } from './database.js';
 
@@ -135,13 +135,36 @@ Ou configure temporariamente na página de Configurações (ícone ⚙️).`,
       message
     );
     
-    // Chamar Google AI
+    // Chamar Google AI com modelo atualizado
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
-    const result = await model.generateContent(fullPrompt);
-    const response = await result.response;
-    const text = response.text();
+    // Usar gemini-1.5-flash que é o modelo mais recente e disponível
+    let model;
+    let text;
+    
+    try {
+      // Tentar primeiro o gemini-1.5-flash (mais rápido e eficiente)
+      model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const result = await model.generateContent(fullPrompt);
+      const response = await result.response;
+      text = response.text();
+    } catch (modelError) {
+      console.log('Trying alternative model...');
+      try {
+        // Se falhar, tentar gemini-1.5-pro
+        model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+        const result = await model.generateContent(fullPrompt);
+        const response = await result.response;
+        text = response.text();
+      } catch (modelError2) {
+        // Se ainda falhar, tentar o modelo legado
+        console.log('Trying legacy model...');
+        model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
+        const result = await model.generateContent(fullPrompt);
+        const response = await result.response;
+        text = response.text();
+      }
+    }
     
     // Criar mensagem de resposta
     const responseMessage = {
@@ -205,6 +228,8 @@ Ou configure temporariamente na página de Configurações (ícone ⚙️).`,
         errorMessage = 'API Key sem permissão. Verifique se a API está ativada no Google Cloud.';
       } else if (error.message.includes('quota')) {
         errorMessage = 'Cota da API excedida. Aguarde um momento ou verifique seu plano.';
+      } else if (error.message.includes('404') && error.message.includes('model')) {
+        errorMessage = 'Modelo de IA não disponível. O sistema está sendo atualizado. Tente novamente em instantes.';
       } else {
         errorMessage = `Erro: ${error.message}`;
       }
