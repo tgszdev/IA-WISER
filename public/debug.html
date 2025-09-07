@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Wiser IA Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-gray-100">
+    <div class="container mx-auto p-4 max-w-6xl">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8 p-4 bg-gray-800 rounded-lg">
+            <h1 class="text-2xl font-bold flex items-center">
+                <i class="fas fa-bug mr-3 text-yellow-500"></i>
+                Debug - Base de Conhecimento
+            </h1>
+            <div class="flex gap-2">
+                <a href="/" class="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition">
+                    <i class="fas fa-comments mr-2"></i>Chat
+                </a>
+                <a href="/config.html" class="px-4 py-2 bg-green-600 rounded hover:bg-green-700 transition">
+                    <i class="fas fa-cog mr-2"></i>Config
+                </a>
+            </div>
+        </div>
+
+        <!-- Status Display -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h3 class="font-semibold mb-2 text-yellow-400">
+                    <i class="fas fa-database mr-2"></i>Status do Banco
+                </h3>
+                <div id="dbStatus" class="text-sm">
+                    <span class="text-gray-400">Não testado</span>
+                </div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h3 class="font-semibold mb-2 text-green-400">
+                    <i class="fas fa-table mr-2"></i>Tabela Knowledge Base
+                </h3>
+                <div id="tableStatus" class="text-sm">
+                    <span class="text-gray-400">Não verificado</span>
+                </div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h3 class="font-semibold mb-2 text-blue-400">
+                    <i class="fas fa-list-ol mr-2"></i>Total de Registros
+                </h3>
+                <div id="recordCount" class="text-sm">
+                    <span class="text-gray-400">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Actions -->
+        <div class="bg-gray-800 p-6 rounded-lg mb-6">
+            <h2 class="text-xl font-semibold mb-4">
+                <i class="fas fa-flask mr-2 text-purple-400"></i>
+                Ações de Teste
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <button onclick="testConnection()" class="px-4 py-3 bg-blue-600 rounded hover:bg-blue-700 transition">
+                    <i class="fas fa-plug mr-2"></i>Testar Conexão
+                </button>
+                <button onclick="fetchSampleData()" class="px-4 py-3 bg-green-600 rounded hover:bg-green-700 transition">
+                    <i class="fas fa-download mr-2"></i>Buscar Dados de Exemplo
+                </button>
+                <button onclick="clearResults()" class="px-4 py-3 bg-gray-600 rounded hover:bg-gray-700 transition">
+                    <i class="fas fa-eraser mr-2"></i>Limpar Resultados
+                </button>
+            </div>
+
+            <!-- Custom Query -->
+            <div class="mt-4">
+                <label class="block text-sm font-medium mb-2">
+                    <i class="fas fa-search mr-2"></i>Testar Query Personalizada
+                </label>
+                <div class="flex gap-2">
+                    <input 
+                        type="text" 
+                        id="customQuery" 
+                        placeholder="Digite uma pergunta para buscar na base..."
+                        class="flex-1 px-4 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    >
+                    <button onclick="testCustomQuery()" class="px-6 py-2 bg-purple-600 rounded hover:bg-purple-700 transition">
+                        <i class="fas fa-play mr-2"></i>Executar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Display -->
+        <div class="bg-gray-800 p-6 rounded-lg">
+            <h2 class="text-xl font-semibold mb-4">
+                <i class="fas fa-terminal mr-2 text-cyan-400"></i>
+                Resultados
+            </h2>
+            <div id="results" class="font-mono text-sm bg-gray-900 p-4 rounded max-h-96 overflow-auto">
+                <span class="text-gray-400">Nenhum teste executado ainda...</span>
+            </div>
+        </div>
+
+        <!-- Console Log -->
+        <div class="mt-6 bg-gray-800 p-6 rounded-lg">
+            <h2 class="text-xl font-semibold mb-4">
+                <i class="fas fa-clipboard-list mr-2 text-orange-400"></i>
+                Log de Console (Últimas Ações)
+            </h2>
+            <div id="consoleLog" class="font-mono text-xs bg-gray-900 p-4 rounded max-h-64 overflow-auto">
+                <span class="text-gray-400">Aguardando ações...</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:3000/api' 
+            : '/api';
+
+        let logEntries = [];
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('pt-BR');
+            const color = {
+                'info': 'text-blue-400',
+                'success': 'text-green-400',
+                'error': 'text-red-400',
+                'warning': 'text-yellow-400'
+            }[type] || 'text-gray-400';
+            
+            logEntries.push(`<span class="${color}">[${timestamp}] ${message}</span>`);
+            if (logEntries.length > 50) logEntries.shift();
+            
+            document.getElementById('consoleLog').innerHTML = logEntries.join('<br>') || '<span class="text-gray-400">Aguardando ações...</span>';
+        }
+
+        function displayResults(data, title = 'Resultado') {
+            const resultsDiv = document.getElementById('results');
+            
+            let html = `<div class="mb-4">`;
+            html += `<h3 class="text-green-400 font-bold mb-2">${title}</h3>`;
+            html += `<pre class="text-gray-300 whitespace-pre-wrap">${JSON.stringify(data, null, 2)}</pre>`;
+            html += `</div>`;
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        async function testConnection() {
+            addLog('Testando conexão com banco de dados...', 'info');
+            
+            try {
+                const response = await fetch(`${API_URL}/debug`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'test' })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    addLog('Conexão testada com sucesso!', 'success');
+                    
+                    // Update status displays
+                    document.getElementById('dbStatus').innerHTML = result.data.success 
+                        ? '<span class="text-green-400">✓ Conectado</span>'
+                        : '<span class="text-red-400">✗ Erro na conexão</span>';
+                    
+                    if (result.data.hasKnowledgeBase !== undefined) {
+                        document.getElementById('tableStatus').innerHTML = result.data.hasKnowledgeBase
+                            ? '<span class="text-green-400">✓ Existe</span>'
+                            : '<span class="text-yellow-400">⚠ Não existe</span>';
+                    }
+                    
+                    if (result.data.recordCount !== undefined) {
+                        document.getElementById('recordCount').innerHTML = 
+                            `<span class="text-blue-400">${result.data.recordCount}</span>`;
+                    }
+                    
+                    displayResults(result.data, 'Teste de Conexão');
+                } else {
+                    addLog('Erro ao testar conexão: ' + (result.message || 'Unknown error'), 'error');
+                    displayResults(result, 'Erro no Teste de Conexão');
+                }
+            } catch (error) {
+                addLog('Erro na requisição: ' + error.message, 'error');
+                displayResults({ error: error.message }, 'Erro');
+            }
+        }
+
+        async function fetchSampleData() {
+            addLog('Buscando dados de exemplo...', 'info');
+            
+            try {
+                const response = await fetch(`${API_URL}/debug`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'sample' })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog(`Dados recuperados: ${result.data?.results?.length || 0} registros`, 'success');
+                    displayResults(result.data, 'Dados de Exemplo');
+                } else {
+                    addLog('Erro ao buscar dados: ' + result.message, 'error');
+                    displayResults(result, 'Erro');
+                }
+            } catch (error) {
+                addLog('Erro na requisição: ' + error.message, 'error');
+                displayResults({ error: error.message }, 'Erro');
+            }
+        }
+
+        async function testCustomQuery() {
+            const query = document.getElementById('customQuery').value.trim();
+            
+            if (!query) {
+                addLog('Digite uma query para testar', 'warning');
+                return;
+            }
+            
+            addLog(`Executando query: "${query}"`, 'info');
+            
+            try {
+                const response = await fetch(`${API_URL}/debug`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'query', query })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const count = result.data?.results?.length || 0;
+                    addLog(`Query executada: ${count} resultado(s) encontrado(s)`, 'success');
+                    displayResults(result.data, `Resultados para: "${query}"`);
+                } else {
+                    addLog('Erro na query: ' + result.message, 'error');
+                    displayResults(result, 'Erro na Query');
+                }
+            } catch (error) {
+                addLog('Erro na requisição: ' + error.message, 'error');
+                displayResults({ error: error.message }, 'Erro');
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '<span class="text-gray-400">Resultados limpos</span>';
+            addLog('Resultados limpos', 'info');
+        }
+
+        // Initial test on page load
+        window.addEventListener('load', () => {
+            addLog('Página de debug carregada', 'info');
+            addLog('Use os botões acima para testar a conexão com o banco', 'info');
+        });
+
+        // Allow Enter key in query input
+        document.getElementById('customQuery').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                testCustomQuery();
+            }
+        });
+    </script>
+</body>
+</html>
