@@ -1,0 +1,16 @@
+{
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 10
+    },
+    "api/**/*.js": {
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/history/:sessionId",
+      "destination": "/api/history/[sessionId].js"
+    }
+  ]
+}
