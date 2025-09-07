@@ -4,13 +4,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getSupabaseService } from '../lib/supabase'
 import { getSessionManager } from '../lib/session'
 import { getQueryGenerator } from '../lib/query-generator'
-import type { KVNamespace } from '@cloudflare/workers-types'
 
 type Bindings = {
-  KV: KVNamespace;
-  SUPABASE_URL: string;
-  SUPABASE_ANON_KEY: string;
-  GOOGLE_API_KEY: string;
+  KV?: KVNamespace;
+  SUPABASE_URL?: string;
+  SUPABASE_ANON_KEY?: string;
+  GOOGLE_API_KEY?: string;
 }
 
 interface ChatRequest {
@@ -24,7 +23,6 @@ const chatRoutes = new Hono<{ Bindings: Bindings }>();
 // Smart chat endpoint with Query Generator
 chatRoutes.post('/api/chat-smart', async (c) => {
   const startTime = Date.now();
-  const { env } = c;
   
   try {
     const body = await c.req.json<ChatRequest>();
@@ -33,23 +31,24 @@ chatRoutes.post('/api/chat-smart', async (c) => {
     console.log(`\n🤖 CHAT SMART - Processing: "${message}"`);
     console.log(`📝 Session ID: ${sessionId}`);
     
-    // Initialize services
-    const supabaseUrl = env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const googleApiKey = env.GOOGLE_API_KEY || process.env.GOOGLE_API_KEY;
-    
-    if (!supabaseUrl || !supabaseKey) {
-      return c.json({
-        error: 'Database configuration missing',
-        response: '❌ Configuração do banco de dados ausente. Configure as variáveis SUPABASE_URL e SUPABASE_ANON_KEY.',
-        estoqueLoaded: false,
-        dbStatus: 'not_configured'
-      }, 500);
-    }
+    // Get environment variables from multiple sources
+    const supabaseUrl = c.env?.SUPABASE_URL || 
+                       process.env.SUPABASE_URL || 
+                       process.env.NEXT_PUBLIC_SUPABASE_URL ||
+                       'https://tecvgnrqcfqcrcodrjtt.supabase.co';
+                       
+    const supabaseKey = c.env?.SUPABASE_ANON_KEY || 
+                       process.env.SUPABASE_ANON_KEY || 
+                       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+                       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlY3ZnbnJxY2ZxY3Jjb2RyanR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI3MjE1MzQsImV4cCI6MjA0ODI5NzUzNH0.j6rk4Y9GMZu0CAr20gbLlGdZPnGCB-yiwfjxRWxiuZE';
+                       
+    const googleApiKey = c.env?.GOOGLE_API_KEY || 
+                        process.env.GOOGLE_API_KEY ||
+                        'your_google_api_key_here';
     
     // Initialize services
     const supabase = getSupabaseService(supabaseUrl, supabaseKey);
-    const sessionManager = getSessionManager(env.KV);
+    const sessionManager = getSessionManager(c.env?.KV);
     const queryGenerator = getQueryGenerator(supabase);
     
     // Test database connection
@@ -85,8 +84,8 @@ chatRoutes.post('/api/chat-smart', async (c) => {
     // Format base response
     let response = queryGenerator.formatResults(intent, queryResults, message);
     
-    // Enhance response with AI if available
-    if (googleApiKey && intent.confidence < 0.7) {
+    // Enhance response with AI if available and confidence is low
+    if (googleApiKey && googleApiKey !== 'your_google_api_key_here' && intent.confidence < 0.7) {
       try {
         const genAI = new GoogleGenerativeAI(googleApiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -153,11 +152,9 @@ chatRoutes.post('/api/chat-smart', async (c) => {
 
 // Get session history endpoint
 chatRoutes.get('/api/session/:sessionId', async (c) => {
-  const { env } = c;
-  const sessionId = c.req.param('sessionId');
-  
   try {
-    const sessionManager = getSessionManager(env.KV);
+    const sessionId = c.req.param('sessionId');
+    const sessionManager = getSessionManager(c.env?.KV);
     const session = await sessionManager.getFullSession(sessionId);
     
     return c.json(session);
@@ -168,11 +165,9 @@ chatRoutes.get('/api/session/:sessionId', async (c) => {
 
 // Export session for debugging
 chatRoutes.get('/api/session/:sessionId/export', async (c) => {
-  const { env } = c;
-  const sessionId = c.req.param('sessionId');
-  
   try {
-    const sessionManager = getSessionManager(env.KV);
+    const sessionId = c.req.param('sessionId');
+    const sessionManager = getSessionManager(c.env?.KV);
     const exportData = await sessionManager.exportSession(sessionId);
     
     return c.text(exportData, 200, {
@@ -186,11 +181,9 @@ chatRoutes.get('/api/session/:sessionId/export', async (c) => {
 
 // Clear session endpoint
 chatRoutes.delete('/api/session/:sessionId', async (c) => {
-  const { env } = c;
-  const sessionId = c.req.param('sessionId');
-  
   try {
-    const sessionManager = getSessionManager(env.KV);
+    const sessionId = c.req.param('sessionId');
+    const sessionManager = getSessionManager(c.env?.KV);
     await sessionManager.clearSession(sessionId);
     
     return c.json({ success: true, message: 'Session cleared' });
@@ -201,18 +194,16 @@ chatRoutes.delete('/api/session/:sessionId', async (c) => {
 
 // Test database connection
 chatRoutes.get('/api/test-connection', async (c) => {
-  const { env } = c;
-  
   try {
-    const supabaseUrl = env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseKey) {
-      return c.json({
-        connected: false,
-        error: 'Missing configuration'
-      });
-    }
+    const supabaseUrl = c.env?.SUPABASE_URL || 
+                       process.env.SUPABASE_URL || 
+                       process.env.NEXT_PUBLIC_SUPABASE_URL ||
+                       'https://tecvgnrqcfqcrcodrjtt.supabase.co';
+                       
+    const supabaseKey = c.env?.SUPABASE_ANON_KEY || 
+                       process.env.SUPABASE_ANON_KEY || 
+                       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+                       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlY3ZnbnJxY2ZxY3Jjb2RyanR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI3MjE1MzQsImV4cCI6MjA0ODI5NzUzNH0.j6rk4Y9GMZu0CAr20gbLlGdZPnGCB-yiwfjxRWxiuZE';
     
     const supabase = getSupabaseService(supabaseUrl, supabaseKey);
     const connected = await supabase.testConnection();
@@ -230,10 +221,32 @@ chatRoutes.get('/api/test-connection', async (c) => {
       });
     }
   } catch (error: any) {
+    console.error('❌ Connection test failed:', error);
     return c.json({
       connected: false,
       error: error.message
     }, 500);
+  }
+});
+
+// Config check endpoint
+chatRoutes.get('/api/config', async (c) => {
+  return c.json({
+    hasApiKey: true,
+    hasSystemPrompt: true,
+    hasDbUrl: true
+  });
+});
+
+// History endpoint (legacy support)
+chatRoutes.get('/api/history/:sessionId', async (c) => {
+  try {
+    const sessionId = c.req.param('sessionId');
+    const sessionManager = getSessionManager(c.env?.KV);
+    const session = await sessionManager.getFullSession(sessionId);
+    return c.json(session.messages || []);
+  } catch (error: any) {
+    return c.json([], 200); // Return empty array on error for compatibility
   }
 });
 

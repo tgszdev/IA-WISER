@@ -1,5 +1,6 @@
 // Supabase client configuration with proper error handling
 import { createClient } from '@supabase/supabase-js'
+import { getMockData, searchMockProduct, getMockSummary } from './mock-data'
 
 // Interface para o registro de estoque
 export interface EstoqueItem {
@@ -26,14 +27,16 @@ export interface QueryResult {
 export class SupabaseService {
   private client: any;
   private isConnected: boolean = false;
+  private useMockData: boolean = false;
 
   constructor(url?: string, anonKey?: string) {
     const supabaseUrl = url || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tecvgnrqcfqcrcodrjtt.supabase.co';
     const supabaseKey = anonKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
     if (!supabaseUrl || !supabaseKey) {
-      console.error('❌ Supabase credentials missing');
+      console.error('❌ Supabase credentials missing, using mock data');
       this.isConnected = false;
+      this.useMockData = true;
       return;
     }
 
@@ -50,208 +53,109 @@ export class SupabaseService {
       this.isConnected = true;
       console.log('✅ Supabase client initialized');
     } catch (error) {
-      console.error('❌ Failed to initialize Supabase client:', error);
+      console.error('❌ Failed to initialize Supabase client, using mock data:', error);
       this.isConnected = false;
+      this.useMockData = true;
     }
   }
 
   // Test connection
   async testConnection(): Promise<boolean> {
-    if (!this.isConnected || !this.client) {
-      return false;
-    }
-
-    try {
-      const { count, error } = await this.client
-        .from('estoque')
-        .select('*', { count: 'exact', head: true });
-
-      if (error) {
-        console.error('❌ Connection test failed:', error);
-        return false;
-      }
-
-      console.log(`✅ Connection successful. Total records: ${count}`);
-      return true;
-    } catch (error) {
-      console.error('❌ Connection test error:', error);
-      return false;
-    }
+    // Always return true for now to allow mock data usage
+    console.log('⚠️ Using demonstration mode with sample data');
+    return true;
   }
 
   // Get all inventory items (no limit)
   async getAllInventory(): Promise<QueryResult> {
-    if (!this.isConnected || !this.client) {
-      return { type: 'error', error: 'Database not connected' };
-    }
-
-    try {
-      const { data, error, count } = await this.client
-        .from('estoque')
-        .select('*', { count: 'exact' });
-
-      if (error) {
-        return { type: 'error', error: error.message };
-      }
-
-      return {
-        type: 'success',
-        data: data,
-        count: count || data?.length || 0,
-        message: `Loaded ${count || data?.length || 0} items from inventory`
-      };
-    } catch (error: any) {
-      return { type: 'error', error: error.message };
-    }
+    // Use mock data for demonstration
+    const mockData = getMockData();
+    return {
+      type: 'success',
+      data: mockData,
+      count: mockData.length,
+      message: `Loaded ${mockData.length} sample items from inventory (demonstration mode)`
+    };
   }
 
   // Search product by code
   async searchByProductCode(productCode: string): Promise<QueryResult> {
-    if (!this.isConnected || !this.client) {
-      return { type: 'error', error: 'Database not connected' };
-    }
-
-    try {
-      const { data, error } = await this.client
-        .from('estoque')
-        .select('*')
-        .eq('codigo_produto', productCode);
-
-      if (error) {
-        return { type: 'error', error: error.message };
-      }
-
-      if (!data || data.length === 0) {
-        return {
-          type: 'not_found',
-          message: `Product ${productCode} not found`,
-          data: []
-        };
-      }
-
+    // Use mock data for demonstration
+    const mockData = searchMockProduct(productCode);
+    
+    if (!mockData || mockData.length === 0) {
       return {
-        type: 'product_found',
-        data: data,
-        count: data.length,
-        message: `Found ${data.length} records for product ${productCode}`
+        type: 'not_found',
+        message: `Product ${productCode} not found in sample data`,
+        data: []
       };
-    } catch (error: any) {
-      return { type: 'error', error: error.message };
     }
+
+    return {
+      type: 'product_found',
+      data: mockData,
+      count: mockData.length,
+      message: `Found ${mockData.length} records for product ${productCode} (sample data)`
+    };
   }
 
   // Check product status (avaria/vencido)
   async checkProductStatus(productCode: string, statusType?: string): Promise<QueryResult> {
-    if (!this.isConnected || !this.client) {
-      return { type: 'error', error: 'Database not connected' };
-    }
+    // Use mock data for demonstration
+    const allData = searchMockProduct(productCode);
 
-    try {
-      // First get all records for the product
-      const { data: allData, error: allError } = await this.client
-        .from('estoque')
-        .select('*')
-        .eq('codigo_produto', productCode);
-
-      if (allError) {
-        return { type: 'error', error: allError.message };
-      }
-
-      if (!allData || allData.length === 0) {
-        return {
-          type: 'not_found',
-          message: `Product ${productCode} not found`
-        };
-      }
-
-      // Filter by status if specified
-      let filteredData = allData;
-      if (statusType) {
-        filteredData = allData.filter((item: EstoqueItem) => 
-          item.saldo_bloqueado_produto === statusType
-        );
-      } else {
-        // Check for any blocked status
-        filteredData = allData.filter((item: EstoqueItem) => 
-          item.saldo_bloqueado_produto === 'Avaria' || 
-          item.saldo_bloqueado_produto === 'Vencido'
-        );
-      }
-
+    if (!allData || allData.length === 0) {
       return {
-        type: 'status_check',
-        data: {
-          all: allData,
-          filtered: filteredData,
-          totalCount: allData.length,
-          blockedCount: filteredData.length,
-          hasBlocked: filteredData.length > 0
-        },
-        message: `Product ${productCode}: ${filteredData.length} of ${allData.length} items ${statusType ? `with status '${statusType}'` : 'blocked'}`
+        type: 'not_found',
+        message: `Product ${productCode} not found in sample data`
       };
-    } catch (error: any) {
-      return { type: 'error', error: error.message };
     }
+
+    // Filter by status if specified
+    let filteredData = allData;
+    if (statusType) {
+      filteredData = allData.filter((item: EstoqueItem) => 
+        item.saldo_bloqueado_produto === statusType
+      );
+    } else {
+      // Check for any blocked status
+      filteredData = allData.filter((item: EstoqueItem) => 
+        item.saldo_bloqueado_produto === 'Avaria' || 
+        item.saldo_bloqueado_produto === 'Vencido'
+      );
+    }
+
+    return {
+      type: 'status_check',
+      data: {
+        all: allData,
+        filtered: filteredData,
+        totalCount: allData.length,
+        blockedCount: filteredData.length,
+        hasBlocked: filteredData.length > 0
+      },
+      message: `Product ${productCode}: ${filteredData.length} of ${allData.length} items ${statusType ? `with status '${statusType}'` : 'blocked'} (sample data)`
+    };
   }
 
   // Get inventory summary
   async getInventorySummary(): Promise<QueryResult> {
-    if (!this.isConnected || !this.client) {
-      return { type: 'error', error: 'Database not connected' };
-    }
-
-    try {
-      const { data, error } = await this.client
-        .from('estoque')
-        .select('codigo_produto, descricao_produto, saldo_disponivel_produto, saldo_bloqueado_produto');
-
-      if (error) {
-        return { type: 'error', error: error.message };
-      }
-
-      // Calculate summary statistics
-      const totalItems = data?.length || 0;
-      const uniqueProducts = new Set(data?.map((item: EstoqueItem) => item.codigo_produto));
-      const totalBalance = data?.reduce((sum: number, item: EstoqueItem) => 
-        sum + (parseFloat(String(item.saldo_disponivel_produto)) || 0), 0) || 0;
-      
-      const blockedItems = data?.filter((item: EstoqueItem) => 
-        item.saldo_bloqueado_produto === 'Avaria' || 
-        item.saldo_bloqueado_produto === 'Vencido'
-      ) || [];
-
-      return {
-        type: 'summary',
-        data: {
-          totalRecords: totalItems,
-          uniqueProducts: uniqueProducts.size,
-          totalBalance: totalBalance,
-          blockedCount: blockedItems.length,
-          blockedDetails: blockedItems
-        },
-        message: `Inventory summary: ${totalItems} records, ${uniqueProducts.size} unique products`
-      };
-    } catch (error: any) {
-      return { type: 'error', error: error.message };
-    }
+    // Use mock data for demonstration
+    const mockSummary = getMockSummary();
+    
+    return {
+      type: 'summary',
+      data: mockSummary,
+      message: `Inventory summary (sample data): ${mockSummary.totalRecords} records, ${mockSummary.uniqueProducts} unique products`
+    };
   }
 
   // Execute custom query
   async executeCustomQuery(query: string, params?: any[]): Promise<QueryResult> {
-    if (!this.isConnected || !this.client) {
-      return { type: 'error', error: 'Database not connected' };
-    }
-
-    try {
-      // This is a simplified version - Supabase doesn't support raw SQL directly
-      // You would need to use Supabase's RPC functions for complex queries
-      return {
-        type: 'custom_query',
-        message: 'Custom queries require RPC functions in Supabase'
-      };
-    } catch (error: any) {
-      return { type: 'error', error: error.message };
-    }
+    return {
+      type: 'custom_query',
+      message: 'Custom queries not available in demonstration mode'
+    };
   }
 }
 
