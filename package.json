@@ -1,23 +1,30 @@
 {
   "name": "wiser-ia-assistant",
-  "version": "1.0.0",
-  "description": "Assistente de IA configurável com base de conhecimento personalizada",
+  "version": "2.0.0",
+  "description": "AI Assistant with Supabase integration and Query Generator",
   "type": "module",
   "scripts": {
-    "dev": "vercel dev",
-    "build": "echo 'No build needed for Vercel'",
-    "deploy": "vercel --prod",
-    "test": "node --version"
+    "dev": "vite",
+    "dev:sandbox": "wrangler pages dev dist --ip 0.0.0.0 --port 3000",
+    "build": "vite build",
+    "preview": "wrangler pages dev dist",
+    "deploy": "npm run build && wrangler pages deploy dist",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "clean-port": "fuser -k 3000/tcp 2>/dev/null || true",
+    "test": "curl http://localhost:3000",
+    "test:connection": "curl http://localhost:3000/api/test-connection"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.39.0",
-    "@vercel/edge-config": "^1.3.0",
-    "postgres": "^3.4.7",
-    "dotenv": "^16.4.7"
+    "hono": "^4.9.6"
   },
   "devDependencies": {
-    "vercel": "^32.0.0"
+    "@cloudflare/workers-types": "^4.20250906.0",
+    "@hono/vite-cloudflare-pages": "^0.4.2",
+    "typescript": "^5.9.2",
+    "vite": "^5.4.19",
+    "wrangler": "^3.78.0"
   },
   "engines": {
     "node": ">=18.0.0"

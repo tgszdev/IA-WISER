@@ -5,15 +5,18 @@
   "pages_build_output_dir": "./dist",
   "compatibility_flags": ["nodejs_compat"],
   
-  // KV Namespace para armazenar configurações e histórico de chat
-  // Crie o namespace antes de fazer deploy:
-  // npx wrangler kv:namespace create wiser_config
-  // npx wrangler kv:namespace create wiser_config --preview
+  // KV Namespace for storing sessions and configuration
   "kv_namespaces": [
     {
       "binding": "KV",
-      "id": "YOUR_KV_NAMESPACE_ID", // Substitua pelo ID real após criar
-      "preview_id": "YOUR_KV_PREVIEW_ID" // Substitua pelo preview ID real
+      "id": "wiser_kv_production",
+      "preview_id": "wiser_kv_preview"
     }
-  ]
+  ],
+  
+  // Environment variables will be set via .dev.vars for local
+  // and via Cloudflare dashboard or wrangler secret for production
+  "vars": {
+    "SUPABASE_URL": "https://tecvgnrqcfqcrcodrjtt.supabase.co"
+  }
 }

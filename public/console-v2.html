@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Console Debug Avançado - Wiser IA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .json-viewer {
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .log-entry {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { 
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .intent-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-6 max-w-full">
+        <!-- Header -->
+        <div class="bg-gray-800 rounded-lg p-4 mb-4 shadow-xl">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-blue-400">
+                        <i class="fas fa-terminal mr-2"></i>Console Debug Avançado
+                    </h1>
+                    <p class="text-gray-400 text-sm mt-1">Monitoramento completo do sistema Wiser IA</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="clearAll()" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition">
+                        <i class="fas fa-trash mr-2"></i>Limpar Tudo
+                    </button>
+                    <button onclick="exportAllLogs()" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition">
+                        <i class="fas fa-download mr-2"></i>Exportar
+                    </button>
+                    <button onclick="toggleAutoScroll()" id="auto-scroll-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                        <i class="fas fa-arrows-alt-v mr-2"></i>Auto-Scroll: ON
+                    </button>
+                    <a href="/" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition inline-block">
+                        <i class="fas fa-comments mr-2"></i>Chat
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-time Stats -->
+        <div class="grid grid-cols-6 gap-4 mb-4">
+            <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold text-blue-400" id="total-requests">0</div>
+                <div class="text-xs text-gray-400 mt-1">Requisições</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold text-green-400" id="success-count">0</div>
+                <div class="text-xs text-gray-400 mt-1">Sucessos</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold text-red-400" id="error-count">0</div>
+                <div class="text-xs text-gray-400 mt-1">Erros</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold text-yellow-400" id="avg-time">0ms</div>
+                <div class="text-xs text-gray-400 mt-1">Tempo Médio</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold text-purple-400" id="db-queries">0</div>
+                <div class="text-xs text-gray-400 mt-1">Queries DB</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold text-cyan-400" id="active-sessions">0</div>
+                <div class="text-xs text-gray-400 mt-1">Sessões Ativas</div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-3 gap-4">
+            <!-- Request Flow -->
+            <div class="bg-gray-800 rounded-lg shadow-xl">
+                <div class="bg-gradient-to-r from-green-700 to-green-600 px-4 py-3 rounded-t-lg">
+                    <h2 class="font-semibold text-white flex justify-between items-center">
+                        <span><i class="fas fa-upload mr-2"></i>REQUISIÇÕES</span>
+                        <span class="text-xs" id="request-count">0</span>
+                    </h2>
+                </div>
+                <div id="request-console" class="p-4 h-[500px] overflow-y-auto space-y-2"></div>
+            </div>
+
+            <!-- Processing -->
+            <div class="bg-gray-800 rounded-lg shadow-xl">
+                <div class="bg-gradient-to-r from-yellow-700 to-yellow-600 px-4 py-3 rounded-t-lg">
+                    <h2 class="font-semibold text-white flex justify-between items-center">
+                        <span><i class="fas fa-cogs mr-2"></i>PROCESSAMENTO</span>
+                        <span class="text-xs" id="process-count">0</span>
+                    </h2>
+                </div>
+                <div id="process-console" class="p-4 h-[500px] overflow-y-auto space-y-2"></div>
+            </div>
+
+            <!-- Responses -->
+            <div class="bg-gray-800 rounded-lg shadow-xl">
+                <div class="bg-gradient-to-r from-blue-700 to-blue-600 px-4 py-3 rounded-t-lg">
+                    <h2 class="font-semibold text-white flex justify-between items-center">
+                        <span><i class="fas fa-download mr-2"></i>RESPOSTAS</span>
+                        <span class="text-xs" id="response-count">0</span>
+                    </h2>
+                </div>
+                <div id="response-console" class="p-4 h-[500px] overflow-y-auto space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Session Monitor -->
+        <div class="bg-gray-800 rounded-lg shadow-xl mt-4">
+            <div class="bg-gradient-to-r from-purple-700 to-purple-600 px-4 py-3 rounded-t-lg">
+                <h2 class="font-semibold text-white">
+                    <i class="fas fa-users mr-2"></i>MONITOR DE SESSÕES
+                </h2>
+            </div>
+            <div id="session-monitor" class="p-4 max-h-[300px] overflow-y-auto">
+                <div class="grid grid-cols-4 gap-4" id="session-list"></div>
+            </div>
+        </div>
+
+        <!-- Test Panel -->
+        <div class="bg-gray-800 rounded-lg p-4 mt-4 shadow-xl">
+            <h3 class="font-semibold text-gray-300 mb-3">
+                <i class="fas fa-vial mr-2"></i>Painel de Testes
+            </h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <input 
+                        type="text" 
+                        id="test-message" 
+                        placeholder="Digite uma mensagem de teste..."
+                        class="w-full px-4 py-2 bg-gray-700 rounded-lg text-white placeholder-gray-400"
+                        value="o produto 000032 esta com avaria?"
+                    >
+                </div>
+                <div class="flex gap-2">
+                    <select id="test-intent" class="px-4 py-2 bg-gray-700 rounded-lg text-white">
+                        <option value="">Auto-detectar Intent</option>
+                        <option value="productInfo">Info Produto</option>
+                        <option value="productStatus">Status Produto</option>
+                        <option value="productBalance">Saldo Produto</option>
+                        <option value="totalInventory">Total Inventário</option>
+                        <option value="blockedItems">Itens Bloqueados</option>
+                    </select>
+                    <button onclick="sendTestMessage()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                        <i class="fas fa-paper-plane mr-2"></i>Enviar
+                    </button>
+                    <button onclick="testConnection()" class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition">
+                        <i class="fas fa-database mr-2"></i>Testar DB
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let autoScroll = true;
+        let stats = {
+            total: 0,
+            success: 0,
+            errors: 0,
+            times: [],
+            queries: 0,
+            sessions: new Set()
+        };
+
+        // Enhanced fetch interceptor
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            const [url, options] = args;
+            
+            if (url.includes('/api/')) {
+                const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                const startTime = Date.now();
+                
+                // Log request
+                if (options && options.body) {
+                    try {
+                        const requestData = JSON.parse(options.body);
+                        logRequest(requestData, requestId, url);
+                        
+                        // Track session
+                        if (requestData.sessionId) {
+                            stats.sessions.add(requestData.sessionId);
+                            updateStats();
+                        }
+                    } catch (e) {
+                        logRequest({ error: 'Parse error', body: options.body }, requestId, url);
+                    }
+                }
+                
+                try {
+                    // Log processing
+                    logProcessing({
+                        action: 'Iniciando processamento',
+                        requestId,
+                        url
+                    });
+                    
+                    const response = await originalFetch.apply(this, args);
+                    const responseTime = Date.now() - startTime;
+                    
+                    // Clone and read response
+                    const responseClone = response.clone();
+                    const responseData = await responseClone.json();
+                    
+                    // Log processing details
+                    if (responseData.queryType) {
+                        logProcessing({
+                            action: 'Query executada',
+                            type: responseData.queryType,
+                            confidence: responseData.confidence,
+                            time: responseTime,
+                            requestId
+                        });
+                        stats.queries++;
+                    }
+                    
+                    // Log response
+                    logResponse(responseData, requestId, responseTime, response.status);
+                    
+                    return response;
+                } catch (error) {
+                    const responseTime = Date.now() - startTime;
+                    logResponse({ error: error.message }, requestId, responseTime, 'error');
+                    throw error;
+                }
+            }
+            
+            return originalFetch.apply(this, args);
+        };
+
+        function logRequest(data, requestId, url) {
+            const container = document.getElementById('request-console');
+            const entry = createLogEntry('request', data, requestId, url);
+            container.insertBefore(entry, container.firstChild);
+            updateCounter('request-count', container.children.length);
+            stats.total++;
+            updateStats();
+            if (autoScroll) container.scrollTop = 0;
+        }
+
+        function logProcessing(data) {
+            const container = document.getElementById('process-console');
+            const entry = createProcessEntry(data);
+            container.insertBefore(entry, container.firstChild);
+            updateCounter('process-count', container.children.length);
+            if (autoScroll) container.scrollTop = 0;
+        }
+
+        function logResponse(data, requestId, responseTime, status) {
+            const container = document.getElementById('response-console');
+            const entry = createLogEntry('response', data, requestId, null, responseTime, status);
+            container.insertBefore(entry, container.firstChild);
+            updateCounter('response-count', container.children.length);
+            
+            if (status === 200) {
+                stats.success++;
+            } else {
+                stats.errors++;
+            }
+            stats.times.push(responseTime);
+            updateStats();
+            if (autoScroll) container.scrollTop = 0;
+        }
+
+        function createLogEntry(type, data, requestId, url, responseTime, status) {
+            const entry = document.createElement('div');
+            const isError = status && status !== 200;
+            const borderColor = type === 'request' ? 'border-green-500' : 
+                               isError ? 'border-red-500' : 'border-blue-500';
+            
+            entry.className = `log-entry bg-gray-900 rounded-lg p-3 mb-2 border-l-4 ${borderColor}`;
+            
+            let content = `
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-semibold ${type === 'request' ? 'text-green-400' : 'text-blue-400'}">
+                        ${type === 'request' ? '↑' : '↓'} ${requestId.substr(0, 12)}
+                    </span>
+                    <span class="text-xs text-gray-500">${new Date().toLocaleTimeString('pt-BR')}</span>
+                </div>
+            `;
+            
+            if (type === 'request') {
+                content += `
+                    <div class="text-xs text-gray-300">
+                        <div class="mb-1"><span class="text-yellow-400">URL:</span> ${url}</div>
+                        <div class="mb-1"><span class="text-yellow-400">Mensagem:</span> ${data.message || 'N/A'}</div>
+                        <div><span class="text-yellow-400">Sessão:</span> ${data.sessionId || 'N/A'}</div>
+                    </div>
+                `;
+            } else {
+                content += `
+                    <div class="text-xs text-gray-300">
+                        ${responseTime ? `<div class="mb-1"><span class="text-cyan-400">Tempo:</span> ${responseTime}ms</div>` : ''}
+                        ${data.queryType ? `<div class="mb-1"><span class="text-purple-400">Tipo:</span> <span class="intent-badge bg-purple-600">${data.queryType}</span></div>` : ''}
+                        ${data.confidence ? `<div class="mb-1"><span class="text-yellow-400">Confiança:</span> ${Math.round(data.confidence * 100)}%</div>` : ''}
+                        ${data.error ? `<div class="text-red-400">Erro: ${data.error}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            content += `
+                <details class="mt-2">
+                    <summary class="cursor-pointer text-blue-400 hover:text-blue-300 text-xs">
+                        <i class="fas fa-code mr-1"></i>Ver Detalhes
+                    </summary>
+                    <pre class="mt-2 bg-black p-2 rounded text-xs overflow-x-auto json-viewer">${JSON.stringify(data, null, 2)}</pre>
+                </details>
+            `;
+            
+            entry.innerHTML = content;
+            return entry;
+        }
+
+        function createProcessEntry(data) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry bg-gray-900 rounded-lg p-2 mb-2 border-l-4 border-yellow-500';
+            
+            let icon = '⚙️';
+            if (data.action.includes('Query')) icon = '🔍';
+            if (data.action.includes('Intent')) icon = '🎯';
+            if (data.action.includes('Session')) icon = '👤';
+            
+            entry.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-yellow-400">
+                        ${icon} ${data.action}
+                    </span>
+                    <span class="text-xs text-gray-500">${new Date().toLocaleTimeString('pt-BR')}</span>
+                </div>
+                ${data.type ? `<div class="text-xs text-gray-400 mt-1">Tipo: ${data.type}</div>` : ''}
+                ${data.time ? `<div class="text-xs text-gray-400">Tempo: ${data.time}ms</div>` : ''}
+            `;
+            
+            return entry;
+        }
+
+        function updateCounter(id, count) {
+            document.getElementById(id).textContent = count;
+        }
+
+        function updateStats() {
+            document.getElementById('total-requests').textContent = stats.total;
+            document.getElementById('success-count').textContent = stats.success;
+            document.getElementById('error-count').textContent = stats.errors;
+            document.getElementById('db-queries').textContent = stats.queries;
+            document.getElementById('active-sessions').textContent = stats.sessions.size;
+            
+            if (stats.times.length > 0) {
+                const avg = Math.round(stats.times.reduce((a, b) => a + b, 0) / stats.times.length);
+                document.getElementById('avg-time').textContent = avg + 'ms';
+            }
+            
+            updateSessionMonitor();
+        }
+
+        function updateSessionMonitor() {
+            const container = document.getElementById('session-list');
+            container.innerHTML = '';
+            
+            stats.sessions.forEach(sessionId => {
+                const sessionDiv = document.createElement('div');
+                sessionDiv.className = 'bg-gray-700 rounded p-2';
+                sessionDiv.innerHTML = `
+                    <div class="text-xs text-purple-400 font-semibold mb-1">
+                        <i class="fas fa-user mr-1"></i>${sessionId.substr(0, 20)}...
+                    </div>
+                    <button onclick="viewSession('${sessionId}')" class="text-xs text-blue-400 hover:text-blue-300">
+                        <i class="fas fa-eye mr-1"></i>Ver Detalhes
+                    </button>
+                `;
+                container.appendChild(sessionDiv);
+            });
+        }
+
+        async function viewSession(sessionId) {
+            try {
+                const response = await fetch(`/api/session/${sessionId}`);
+                const data = await response.json();
+                console.log('Session data:', data);
+                alert(`Sessão ${sessionId}:\n\nMensagens: ${data.messages?.length || 0}\nCriada: ${data.createdAt}\n\nDetalhes no console (F12)`);
+            } catch (error) {
+                console.error('Error fetching session:', error);
+            }
+        }
+
+        function toggleAutoScroll() {
+            autoScroll = !autoScroll;
+            const btn = document.getElementById('auto-scroll-btn');
+            btn.innerHTML = `<i class="fas fa-arrows-alt-v mr-2"></i>Auto-Scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+            btn.className = autoScroll ? 
+                'px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition' :
+                'px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition';
+        }
+
+        function clearAll() {
+            ['request-console', 'process-console', 'response-console'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+            stats = { total: 0, success: 0, errors: 0, times: [], queries: 0, sessions: new Set() };
+            updateStats();
+        }
+
+        function exportAllLogs() {
+            const logs = {
+                timestamp: new Date().toISOString(),
+                stats: stats,
+                requests: document.getElementById('request-console').innerText,
+                processing: document.getElementById('process-console').innerText,
+                responses: document.getElementById('response-console').innerText
+            };
+            
+            const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wiser-debug-${new Date().toISOString()}.json`;
+            a.click();
+        }
+
+        async function sendTestMessage() {
+            const message = document.getElementById('test-message').value;
+            const intent = document.getElementById('test-intent').value;
+            
+            if (!message) return;
+            
+            try {
+                const sessionId = `test_${Date.now()}`;
+                const response = await fetch('/api/chat-smart', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        message,
+                        sessionId,
+                        testIntent: intent || undefined
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Test response:', data);
+                
+                // Show alert with key info
+                alert(`✅ Teste Concluído!\n\nIntent: ${data.queryType}\nConfiança: ${Math.round((data.confidence || 0) * 100)}%\nTempo: ${data.responseTime}ms\n\nResposta salva no console.`);
+                
+            } catch (error) {
+                console.error('Test error:', error);
+                alert(`❌ Erro no teste: ${error.message}`);
+            }
+        }
+
+        async function testConnection() {
+            try {
+                logProcessing({ action: 'Testando conexão com banco de dados' });
+                
+                const response = await fetch('/api/test-connection');
+                const data = await response.json();
+                
+                if (data.connected) {
+                    const summary = data.summary;
+                    alert(`✅ Conexão OK!\n\nRegistros: ${summary.totalRecords}\nProdutos únicos: ${summary.uniqueProducts}\nSaldo total: ${summary.totalBalance}\nBloqueados: ${summary.blockedCount}`);
+                } else {
+                    alert(`❌ Falha na conexão!\n\n${data.error}`);
+                }
+            } catch (error) {
+                alert(`❌ Erro ao testar: ${error.message}`);
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'l':
+                        e.preventDefault();
+                        clearAll();
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        exportAllLogs();
+                        break;
+                    case 'Enter':
+                        e.preventDefault();
+                        sendTestMessage();
+                        break;
+                }
+            }
+        });
+
+        // Show connection status on load
+        window.addEventListener('load', () => {
+            setTimeout(testConnection, 1000);
+        });
+    </script>
+</body>
+</html>

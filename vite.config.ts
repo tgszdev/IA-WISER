@@ -6,13 +6,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
-      external: ['pg', 'postgres']
+      input: './src/index.tsx',
+      output: {
+        entryFileNames: '_worker.js'
+      }
     }
   },
   resolve: {
     alias: {
-      'pg': 'pg',
-      'postgres': 'postgres'
+      '@': '/src'
     }
   }
 })
