@@ -6,6 +6,7 @@ import chatEnhancedRoutes from './routes/chat-enhanced'
 import openAIRoutes from './routes/chat-openai'
 import inventoryRoutes from './routes/inventory'
 import chatSmartRoutes from './routes/chat-smart'
+import chatCompleteRoutes from './routes/chat-complete'
 
 // Types
 type Bindings = {
@@ -30,6 +31,7 @@ app.route('/', chatEnhancedRoutes)
 app.route('/', openAIRoutes)
 app.route('/', inventoryRoutes)
 app.route('/', chatSmartRoutes)
+app.route('/', chatCompleteRoutes)
 
 // Note: Static files are served directly by Cloudflare Pages
 // No need for serveStatic in production
@@ -55,6 +57,9 @@ app.get('/', async (c) => {
                     Wiser IA Assistant
                 </h1>
                 <div class="flex gap-2">
+                    <a href="/chat-complete.html" class="p-3 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow hover:shadow-lg transition-all" title="Versão Completa">
+                        <i class="fas fa-rocket text-xl"></i>
+                    </a>
                     <a href="/console-v2.html" class="p-3 rounded-lg bg-white shadow hover:shadow-lg transition-all" title="Console Debug">
                         <i class="fas fa-terminal text-purple-600 text-xl"></i>
                     </a>

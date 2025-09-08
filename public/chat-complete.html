@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiser IA Assistant - Versão Completa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Animações customizadas */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message-enter {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        /* Scrollbar customizada */
+        #messages::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        #messages::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        
+        #messages::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* Loading dots animation */
+        @keyframes bounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+        
+        .loading-dot {
+            animation: bounce 1.4s infinite;
+        }
+        
+        .loading-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .loading-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        /* Status indicator pulse */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        
+        .status-online {
+            animation: pulse 2s infinite;
+        }
+        
+        /* Markdown styles */
+        .markdown-content h1 { font-size: 1.5rem; font-weight: bold; margin: 1rem 0; }
+        .markdown-content h2 { font-size: 1.25rem; font-weight: bold; margin: 0.75rem 0; }
+        .markdown-content h3 { font-size: 1.1rem; font-weight: bold; margin: 0.5rem 0; }
+        .markdown-content ul { list-style-type: disc; margin-left: 1.5rem; }
+        .markdown-content ol { list-style-type: decimal; margin-left: 1.5rem; }
+        .markdown-content strong { font-weight: bold; }
+        .markdown-content em { font-style: italic; }
+        .markdown-content code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-family: monospace; }
+        .markdown-content pre { background: #f4f4f4; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
+        .markdown-content hr { border-top: 1px solid #e5e5e5; margin: 1rem 0; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-white to-purple-50 min-h-screen">
+    <div class="container mx-auto px-4 py-6 max-w-6xl">
+        <!-- Header -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-robot mr-3 text-blue-600"></i>
+                        Wiser IA Assistant
+                        <span class="ml-3 text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full">v2.0 Completa</span>
+                    </h1>
+                    <p class="text-gray-600 mt-2">Sistema inteligente de consulta de estoque com análise de 100% dos dados</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <!-- Status Indicator -->
+                    <div class="flex items-center">
+                        <div id="status-indicator" class="w-3 h-3 bg-green-500 rounded-full status-online"></div>
+                        <span id="status-text" class="ml-2 text-sm text-gray-600">Online</span>
+                    </div>
+                    
+                    <!-- Cache Info -->
+                    <div class="text-sm text-gray-600">
+                        <i class="fas fa-database mr-1"></i>
+                        <span id="cache-info">Cache: Novo</span>
+                    </div>
+                    
+                    <!-- Refresh Button -->
+                    <button onclick="refreshCache()" 
+                            class="p-2 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+                            title="Atualizar cache de dados">
+                        <i class="fas fa-sync-alt text-blue-600"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Chat Area -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <!-- Messages Container -->
+                    <div id="messages" class="h-[600px] overflow-y-auto p-6 space-y-4">
+                        <!-- Welcome Message -->
+                        <div class="flex items-start space-x-3 message-enter">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md">
+                                <i class="fas fa-robot text-white"></i>
+                            </div>
+                            <div class="flex-1 max-w-lg">
+                                <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 shadow-sm">
+                                    <p class="text-gray-700 font-medium mb-2">
+                                        👋 Olá! Sou o Wiser IA Assistant v2.0
+                                    </p>
+                                    <p class="text-gray-600 text-sm mb-3">
+                                        Agora com análise completa de 100% dos dados do inventário!
+                                    </p>
+                                    <div class="bg-white rounded-lg p-3 text-sm">
+                                        <p class="font-semibold text-gray-700 mb-2">Experimente perguntar:</p>
+                                        <ul class="space-y-1 text-gray-600">
+                                            <li>• "Qual o saldo do produto RM 139?"</li>
+                                            <li>• "Quais produtos estão vencidos?"</li>
+                                            <li>• "Mostre o resumo completo do inventário"</li>
+                                            <li>• "Qual produto está no local 034057501?"</li>
+                                            <li>• "Produtos com estoque baixo"</li>
+                                            <li>• "Qual o valor total do estoque?"</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Typing Indicator -->
+                    <div id="typing-indicator" class="hidden px-6 pb-4">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md">
+                                <i class="fas fa-robot text-white"></i>
+                            </div>
+                            <div class="bg-gray-100 rounded-xl p-4">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 bg-gray-500 rounded-full loading-dot"></div>
+                                    <div class="w-2 h-2 bg-gray-500 rounded-full loading-dot"></div>
+                                    <div class="w-2 h-2 bg-gray-500 rounded-full loading-dot"></div>
+                                    <span class="ml-2 text-sm text-gray-600">Analisando dados...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Input Area -->
+                    <div class="border-t border-gray-200 p-4">
+                        <div class="flex space-x-3">
+                            <input 
+                                type="text" 
+                                id="message-input"
+                                placeholder="Digite sua pergunta sobre o inventário..."
+                                class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                autofocus
+                            >
+                            <button 
+                                id="send-button"
+                                onclick="sendMessage()"
+                                class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all flex items-center space-x-2 shadow-md hover:shadow-lg"
+                            >
+                                <i class="fas fa-paper-plane"></i>
+                                <span>Enviar</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Quick Actions -->
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <button onclick="quickQuery('Qual o resumo completo do inventário?')" 
+                                    class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full transition-colors">
+                                📊 Resumo Geral
+                            </button>
+                            <button onclick="quickQuery('Produtos com estoque baixo')" 
+                                    class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full transition-colors">
+                                ⚠️ Estoque Baixo
+                            </button>
+                            <button onclick="quickQuery('Produtos vencidos')" 
+                                    class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full transition-colors">
+                                🕐 Vencidos
+                            </button>
+                            <button onclick="quickQuery('Produtos com avaria')" 
+                                    class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full transition-colors">
+                                🔧 Avarias
+                            </button>
+                            <button onclick="quickQuery('Valor total do estoque')" 
+                                    class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-full transition-colors">
+                                💰 Valor Total
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Stats Panel -->
+            <div class="space-y-6">
+                <!-- Data Stats -->
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-chart-bar mr-2 text-purple-600"></i>
+                        Estatísticas do Sistema
+                    </h3>
+                    <div id="stats-panel" class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Total de Registros:</span>
+                            <span id="stat-records" class="font-bold text-gray-800">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Produtos Únicos:</span>
+                            <span id="stat-products" class="font-bold text-gray-800">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Saldo Total:</span>
+                            <span id="stat-balance" class="font-bold text-gray-800">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Valor Total:</span>
+                            <span id="stat-value" class="font-bold text-gray-800">-</span>
+                        </div>
+                        <hr class="my-2">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Com Avaria:</span>
+                            <span id="stat-damaged" class="font-bold text-orange-600">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Vencidos:</span>
+                            <span id="stat-expired" class="font-bold text-red-600">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Estoque Baixo:</span>
+                            <span id="stat-low" class="font-bold text-yellow-600">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Response Metadata -->
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-info-circle mr-2 text-blue-600"></i>
+                        Última Resposta
+                    </h3>
+                    <div id="metadata-panel" class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Modelo IA:</span>
+                            <span id="meta-model" class="font-bold text-gray-800">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Tempo de Resposta:</span>
+                            <span id="meta-time" class="font-bold text-gray-800">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Confiança:</span>
+                            <span id="meta-confidence" class="font-bold text-gray-800">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Tipo de Consulta:</span>
+                            <span id="meta-type" class="font-bold text-gray-800">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Help -->
+                <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-question-circle mr-2 text-indigo-600"></i>
+                        Dicas
+                    </h3>
+                    <ul class="text-sm text-gray-600 space-y-2">
+                        <li>💡 Use códigos específicos como "RM 139" ou "PROD-001"</li>
+                        <li>💡 Pergunte sobre locais específicos</li>
+                        <li>💡 Consulte lotes individuais</li>
+                        <li>💡 Peça resumos financeiros</li>
+                        <li>💡 O sistema analisa 100% dos dados!</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuração da API
+        const API_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:3000/api/chat-complete'
+            : '/api/chat-complete';
+        
+        // Estado da aplicação
+        let sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        let isProcessing = false;
+        
+        // Elementos DOM
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const typingIndicator = document.getElementById('typing-indicator');
+        
+        // Função para formatar markdown
+        function formatMarkdown(text) {
+            // Converter negrito
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Converter itálico
+            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            
+            // Converter código inline
+            text = text.replace(/`(.*?)`/g, '<code>$1</code>');
+            
+            // Converter quebras de linha
+            text = text.replace(/\n/g, '<br>');
+            
+            // Converter linhas horizontais
+            text = text.replace(/─{10,}/g, '<hr class="my-2">');
+            text = text.replace(/={10,}/g, '<hr class="my-2 border-t-2">');
+            
+            // Converter listas
+            text = text.replace(/^• (.+)$/gm, '<li>$1</li>');
+            text = text.replace(/(<li>.*<\/li>)/s, '<ul class="list-disc ml-4">$1</ul>');
+            
+            return text;
+        }
+        
+        // Função para adicionar mensagem ao chat
+        function addMessage(content, isUser = false, metadata = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex items-start space-x-3 message-enter';
+            
+            if (isUser) {
+                messageDiv.innerHTML = `
+                    <div class="flex-1 flex justify-end">
+                        <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-4 max-w-lg shadow-md">
+                            <p>${content}</p>
+                        </div>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center shadow-md">
+                        <i class="fas fa-user text-white"></i>
+                    </div>
+                `;
+            } else {
+                const formattedContent = formatMarkdown(content);
+                messageDiv.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md">
+                        <i class="fas fa-robot text-white"></i>
+                    </div>
+                    <div class="flex-1 max-w-lg">
+                        <div class="bg-gray-50 rounded-xl p-4 shadow-sm">
+                            <div class="markdown-content">${formattedContent}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Atualizar metadados se fornecidos
+            if (metadata) {
+                updateMetadata(metadata);
+                updateStats(metadata.dataStats);
+            }
+        }
+        
+        // Função para atualizar metadados
+        function updateMetadata(metadata) {
+            if (metadata.aiModel) {
+                document.getElementById('meta-model').textContent = metadata.aiModel;
+            }
+            if (metadata.responseTime) {
+                document.getElementById('meta-time').textContent = metadata.responseTime + 'ms';
+            }
+            if (metadata.query && metadata.query.confidence) {
+                document.getElementById('meta-confidence').textContent = Math.round(metadata.query.confidence * 100) + '%';
+            }
+            if (metadata.query && metadata.query.type) {
+                document.getElementById('meta-type').textContent = metadata.query.type;
+            }
+            if (metadata.cacheAge !== undefined) {
+                const ageSeconds = Math.round(metadata.cacheAge / 1000);
+                document.getElementById('cache-info').textContent = 
+                    ageSeconds === 0 ? 'Cache: Novo' : `Cache: ${ageSeconds}s`;
+            }
+        }
+        
+        // Função para atualizar estatísticas
+        function updateStats(stats) {
+            if (!stats) return;
+            
+            if (stats.totalRegistros !== undefined) {
+                document.getElementById('stat-records').textContent = stats.totalRegistros.toLocaleString('pt-BR');
+            }
+            if (stats.produtosUnicos !== undefined) {
+                document.getElementById('stat-products').textContent = stats.produtosUnicos.toLocaleString('pt-BR');
+            }
+            if (stats.totalSaldoDisponivel !== undefined) {
+                document.getElementById('stat-balance').textContent = stats.totalSaldoDisponivel.toLocaleString('pt-BR');
+            }
+            if (stats.valorTotalEstoque !== undefined) {
+                document.getElementById('stat-value').textContent = 
+                    'R$ ' + stats.valorTotalEstoque.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            }
+            if (stats.produtosAvaria !== undefined) {
+                document.getElementById('stat-damaged').textContent = stats.produtosAvaria.toLocaleString('pt-BR');
+            }
+            if (stats.produtosVencidos !== undefined) {
+                document.getElementById('stat-expired').textContent = stats.produtosVencidos.toLocaleString('pt-BR');
+            }
+            if (stats.produtosEstoqueBaixo !== undefined) {
+                document.getElementById('stat-low').textContent = stats.produtosEstoqueBaixo.toLocaleString('pt-BR');
+            }
+        }
+        
+        // Função para enviar mensagem
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || isProcessing) return;
+            
+            isProcessing = true;
+            messageInput.value = '';
+            
+            // Adicionar mensagem do usuário
+            addMessage(message, true);
+            
+            // Mostrar indicador de digitação
+            typingIndicator.classList.remove('hidden');
+            
+            // Atualizar status
+            document.getElementById('status-text').textContent = 'Processando...';
+            document.getElementById('status-indicator').classList.add('bg-yellow-500');
+            document.getElementById('status-indicator').classList.remove('bg-green-500');
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message,
+                        sessionId,
+                        forceRefresh: false
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addMessage(data.response, false, data.metadata);
+                } else {
+                    addMessage(data.response || 'Erro ao processar mensagem', false);
+                }
+                
+            } catch (error) {
+                console.error('Erro:', error);
+                addMessage('❌ Erro de conexão. Por favor, tente novamente.', false);
+            } finally {
+                // Ocultar indicador de digitação
+                typingIndicator.classList.add('hidden');
+                
+                // Restaurar status
+                document.getElementById('status-text').textContent = 'Online';
+                document.getElementById('status-indicator').classList.remove('bg-yellow-500');
+                document.getElementById('status-indicator').classList.add('bg-green-500');
+                
+                isProcessing = false;
+                messageInput.focus();
+            }
+        }
+        
+        // Função para atualizar cache
+        async function refreshCache() {
+            if (isProcessing) return;
+            
+            const button = event.target.closest('button');
+            const icon = button.querySelector('i');
+            
+            icon.classList.add('fa-spin');
+            
+            try {
+                const response = await fetch(API_URL + '/refresh', {
+                    method: 'GET'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addMessage('✅ Cache atualizado com sucesso!', false);
+                    if (data.stats) {
+                        updateStats(data.stats);
+                    }
+                    document.getElementById('cache-info').textContent = 'Cache: Novo';
+                }
+            } catch (error) {
+                console.error('Erro ao atualizar cache:', error);
+                addMessage('❌ Erro ao atualizar cache', false);
+            } finally {
+                icon.classList.remove('fa-spin');
+            }
+        }
+        
+        // Função para consultas rápidas
+        function quickQuery(query) {
+            messageInput.value = query;
+            sendMessage();
+        }
+        
+        // Event listeners
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Carregar dados iniciais
+        window.addEventListener('load', () => {
+            messageInput.focus();
+            
+            // Tentar carregar estatísticas iniciais
+            fetch(API_URL + '/refresh', { method: 'GET' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.stats) {
+                        updateStats(data.stats);
+                    }
+                })
+                .catch(console.error);
+        });
+    </script>
+</body>
+</html>
