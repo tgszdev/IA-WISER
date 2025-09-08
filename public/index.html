@@ -17,6 +17,9 @@
                 Wiser IA Assistant
             </h1>
             <div class="flex gap-2">
+                <a href="/ai-status.html" class="p-3 rounded-lg bg-white shadow hover:shadow-lg transition-all" title="Status das IAs">
+                    <i class="fas fa-brain text-green-600 text-xl"></i>
+                </a>
                 <a href="/console.html" class="p-3 rounded-lg bg-white shadow hover:shadow-lg transition-all" title="Console Debug">
                     <i class="fas fa-terminal text-purple-600 text-xl"></i>
                 </a>
@@ -87,7 +90,15 @@
         
         <!-- Status Bar -->
         <div id="status-bar" class="mt-4 text-center text-sm text-gray-500">
-            <span id="status-text">Pronto para conversar</span>
+            <div class="flex justify-center items-center space-x-4">
+                <span id="status-text">Pronto para conversar</span>
+                <div id="ai-indicator" class="hidden">
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold" id="ai-badge">
+                        <i class="fas fa-circle text-green-500 mr-1"></i>
+                        <span id="ai-name">Local</span>
+                    </span>
+                </div>
+            </div>
         </div>
     </div>
     

@@ -1,15 +1,16 @@
-# 🤖 Wiser IA Assistant v2.0
+# 🤖 Wiser IA Assistant v3.0 - Multi-AI System
 
 ## 📌 Status da Implementação
 
-### ✅ **COMPLETADO** - Sistema Totalmente Funcional
+### ✅ **COMPLETADO** - Sistema com 3 Níveis de IA
 
 ## 🌐 URLs de Acesso
 
 - **Aplicação Principal**: https://3000-itd9ec3aegznw6o63t98q-6532622b.e2b.dev
+- **Status das IAs**: https://3000-itd9ec3aegznw6o63t98q-6532622b.e2b.dev/ai-status.html
 - **Console Debug Avançado**: https://3000-itd9ec3aegznw6o63t98q-6532622b.e2b.dev/console-v2.html
 - **Console Debug Simples**: https://3000-itd9ec3aegznw6o63t98q-6532622b.e2b.dev/console.html
-- **GitHub**: Ainda não publicado
+- **GitHub**: https://github.com/tgszdev/IA-WISER
 - **Cloudflare Pages**: Pronto para deploy
 
 ## 🎯 Funcionalidades Implementadas
@@ -65,12 +66,30 @@
 ### Stack Tecnológico
 - **Backend**: Hono Framework + Cloudflare Workers
 - **Database**: Supabase (PostgreSQL)
-- **AI**: Google Gemini 1.5 Flash
+- **AI Primária**: OpenAI GPT-4 (quando configurado)
+- **AI Secundária**: Google Gemini 1.5 Flash (fallback)
+- **AI Local**: Query Generator (sempre disponível)
 - **Session Store**: Cloudflare KV
 - **Deploy**: Cloudflare Pages
 - **Dev Server**: PM2 + Wrangler
 
-### Fluxo de Dados
+### 🧠 Sistema Multi-IA com Prioridade
+
+#### **Ordem de Prioridade das IAs:**
+1. **🥇 OpenAI GPT-4** - Primeira escolha (melhor qualidade)
+2. **🥈 Google Gemini** - Fallback quando OpenAI falha
+3. **🥉 Query Generator Local** - Sempre disponível (sem API externa)
+
+#### **Como Identificar qual IA está Respondendo:**
+- **No Chat**: Veja o indicador no rodapé da resposta
+  - 🧠 GPT-4 = OpenAI está sendo usado
+  - ✨ Gemini = Google Gemini está sendo usado
+  - 🔧 Local = Query Generator local
+- **Na Interface**: Badge verde mostra a IA ativa
+- **No Console**: Resposta inclui campo `aiModel`
+- **Página de Status**: `/ai-status.html` mostra status completo
+
+### Fluxo de Dados com Multi-IA
 ```
 User → Chat UI → /api/chat-smart → Query Generator
                                     ↓
@@ -80,7 +99,12 @@ User → Chat UI → /api/chat-smart → Query Generator
                                     ↓
                                   Supabase Query
                                     ↓
-                                  Format Response
+                                  AI Selection:
+                                  1. Try OpenAI (if configured)
+                                  2. Fallback to Gemini (if OpenAI fails)
+                                  3. Use Local (if all fail)
+                                    ↓
+                                  Format Response + AI Indicator
                                     ↓
                                   Session Save → KV
                                     ↓
@@ -115,11 +139,32 @@ User → Chat UI → /api/chat-smart → Query Generator
 
 ### Variáveis de Ambiente (.dev.vars)
 ```env
+# Prioridade 1: OpenAI (Sempre usado quando disponível)
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Prioridade 2: Google Gemini (Fallback)
+GOOGLE_API_KEY=AIza-your-google-api-key-here
+
+# Database
 SUPABASE_URL=https://tecvgnrqcfqcrcodrjtt.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOi...
-GOOGLE_API_KEY=your_api_key_here
+
+# Admin
 ADMIN_PASSWORD=wiser2024
 ```
+
+### ⚠️ IMPORTANTE: Configuração de API Keys
+
+#### **Para OpenAI:**
+1. Acesse https://platform.openai.com/api-keys
+2. Crie uma nova API key
+3. Configure no Cloudflare Pages ou .dev.vars
+4. **NUNCA exponha a chave publicamente**
+
+#### **Para Google Gemini:**
+1. Acesse https://makersuite.google.com/app/apikey
+2. Crie uma nova API key
+3. Configure no Cloudflare Pages ou .dev.vars
 
 ### Deploy para Produção
 ```bash
@@ -152,11 +197,12 @@ npx wrangler pages secret put GOOGLE_API_KEY
 
 ## 🔮 Próximos Passos Recomendados
 
-1. **Adicionar Google API Key** real para melhorar respostas
+1. **Configurar OpenAI API Key** para melhor qualidade de respostas
 2. **Deploy para Cloudflare Pages** para produção
-3. **Implementar cache** para queries frequentes
-4. **Adicionar autenticação** de usuários
-5. **Criar dashboard** de analytics
+3. **Verificar status das IAs** em `/ai-status.html`
+4. **Implementar cache** para queries frequentes
+5. **Adicionar autenticação** de usuários
+6. **Criar dashboard** de analytics
 
 ## 📚 Documentação Adicional
 
@@ -166,6 +212,10 @@ npx wrangler pages secret put GOOGLE_API_KEY
 
 ## 🎉 Conquistas do Projeto
 
+- ✅ **Sistema Multi-IA** com 3 níveis de fallback
+- ✅ **OpenAI GPT-4** integrado como IA primária
+- ✅ **Indicadores visuais** mostrando qual IA está ativa
+- ✅ **Página de status** das IAs em tempo real
 - ✅ Processamento de 100% dos dados (1000+ registros)
 - ✅ Zero timeouts com Query Generator
 - ✅ Sessões persistentes funcionando
@@ -201,7 +251,8 @@ Para problemas ou dúvidas:
 
 ---
 
-**Versão**: 2.0.0  
-**Status**: ✅ Sistema Completo e Funcional  
+**Versão**: 3.0.0  
+**Status**: ✅ Sistema Multi-IA Completo  
+**IAs Disponíveis**: OpenAI GPT-4 | Google Gemini | Query Generator Local  
 **Última Atualização**: Janeiro 2025  
 **Desenvolvido por**: Wiser IA Team

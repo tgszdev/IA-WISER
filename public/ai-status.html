@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status das IAs - Wiser Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">
+                <i class="fas fa-brain mr-2 text-purple-600"></i>
+                Status das IAs
+            </h1>
+            <a href="/" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Voltar ao Chat
+            </a>
+        </div>
+
+        <!-- AI Priority Card -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">
+                <i class="fas fa-sort-amount-down mr-2"></i>
+                Prioridade de Uso
+            </h2>
+            <div class="space-y-3">
+                <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                    <span class="text-2xl mr-3">1️⃣</span>
+                    <div>
+                        <span class="font-semibold text-green-800">OpenAI GPT-4</span>
+                        <span class="text-sm text-gray-600 ml-2">(Melhor qualidade, sempre usado quando disponível)</span>
+                    </div>
+                </div>
+                <div class="flex items-center p-3 bg-purple-50 rounded-lg">
+                    <span class="text-2xl mr-3">2️⃣</span>
+                    <div>
+                        <span class="font-semibold text-purple-800">Google Gemini</span>
+                        <span class="text-sm text-gray-600 ml-2">(Fallback quando OpenAI falha)</span>
+                    </div>
+                </div>
+                <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                    <span class="text-2xl mr-3">3️⃣</span>
+                    <div>
+                        <span class="font-semibold text-gray-800">Query Generator Local</span>
+                        <span class="text-sm text-gray-600 ml-2">(Sempre disponível, sem IA externa)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Status -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">
+                <i class="fas fa-heartbeat mr-2"></i>
+                Status Atual
+            </h2>
+            <div id="current-status" class="text-center py-4">
+                <div class="inline-flex items-center px-6 py-3 rounded-full text-lg font-semibold" id="primary-ai-badge">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>
+                    Verificando...
+                </div>
+            </div>
+        </div>
+
+        <!-- Services Status Grid -->
+        <div class="grid md:grid-cols-3 gap-6 mb-6">
+            <!-- OpenAI Card -->
+            <div class="bg-white rounded-xl shadow-lg p-6" id="openai-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700">🧠 OpenAI</h3>
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold" id="openai-badge">
+                        Verificando...
+                    </span>
+                </div>
+                <div class="space-y-2 text-sm">
+                    <div>
+                        <span class="text-gray-600">Modelo:</span>
+                        <span class="font-medium" id="openai-model">-</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">API Key:</span>
+                        <span class="font-mono text-xs" id="openai-key">-</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Status:</span>
+                        <span id="openai-status">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gemini Card -->
+            <div class="bg-white rounded-xl shadow-lg p-6" id="gemini-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700">✨ Gemini</h3>
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold" id="gemini-badge">
+                        Verificando...
+                    </span>
+                </div>
+                <div class="space-y-2 text-sm">
+                    <div>
+                        <span class="text-gray-600">Modelo:</span>
+                        <span class="font-medium" id="gemini-model">-</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">API Key:</span>
+                        <span class="font-mono text-xs" id="gemini-key">-</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Status:</span>
+                        <span id="gemini-status">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Local Card -->
+            <div class="bg-white rounded-xl shadow-lg p-6" id="local-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700">🔧 Local</h3>
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                        Sempre Ativo
+                    </span>
+                </div>
+                <div class="space-y-2 text-sm">
+                    <div>
+                        <span class="text-gray-600">Modelo:</span>
+                        <span class="font-medium">Query Generator</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Perguntas:</span>
+                        <span class="font-medium">20,000+</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Status:</span>
+                        <span class="text-green-600 font-medium">✅ Pronto</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recommendation -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">
+                <i class="fas fa-lightbulb mr-2"></i>
+                Recomendação
+            </h2>
+            <div id="recommendation" class="text-gray-700">
+                <i class="fas fa-spinner fa-spin"></i> Analisando configuração...
+            </div>
+        </div>
+
+        <!-- How to Configure -->
+        <div class="bg-blue-50 rounded-xl p-6 mt-6">
+            <h3 class="text-lg font-semibold text-blue-900 mb-3">
+                <i class="fas fa-info-circle mr-2"></i>
+                Como Configurar as IAs
+            </h3>
+            <div class="space-y-2 text-sm text-blue-800">
+                <div>
+                    <strong>OpenAI:</strong> Configure a variável de ambiente <code class="bg-blue-100 px-2 py-1 rounded">OPENAI_API_KEY</code> no Cloudflare Pages
+                </div>
+                <div>
+                    <strong>Gemini:</strong> Configure a variável de ambiente <code class="bg-blue-100 px-2 py-1 rounded">GOOGLE_API_KEY</code> no Cloudflare Pages
+                </div>
+                <div class="mt-3">
+                    <strong>Local (para desenvolvimento):</strong> Use o arquivo <code class="bg-blue-100 px-2 py-1 rounded">.dev.vars</code> com:
+                    <pre class="bg-blue-100 p-2 rounded mt-2">OPENAI_API_KEY=sk-...
+GOOGLE_API_KEY=AIza...</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <script>
+        async function checkAIStatus() {
+            try {
+                const response = await axios.get('/api/ai-status');
+                const data = response.data;
+                
+                console.log('AI Status:', data);
+                
+                // Update primary AI badge
+                const primaryBadge = document.getElementById('primary-ai-badge');
+                if (data.primaryAI === 'openai') {
+                    primaryBadge.className = 'inline-flex items-center px-6 py-3 rounded-full text-lg font-semibold bg-green-100 text-green-800';
+                    primaryBadge.innerHTML = '<i class="fas fa-check-circle mr-2"></i> 🧠 OpenAI GPT-4 Ativo';
+                } else if (data.primaryAI === 'gemini') {
+                    primaryBadge.className = 'inline-flex items-center px-6 py-3 rounded-full text-lg font-semibold bg-purple-100 text-purple-800';
+                    primaryBadge.innerHTML = '<i class="fas fa-check-circle mr-2"></i> ✨ Google Gemini Ativo';
+                } else {
+                    primaryBadge.className = 'inline-flex items-center px-6 py-3 rounded-full text-lg font-semibold bg-gray-100 text-gray-800';
+                    primaryBadge.innerHTML = '<i class="fas fa-info-circle mr-2"></i> 🔧 Query Generator Local Ativo';
+                }
+                
+                // Update OpenAI card
+                const openai = data.services.openai;
+                document.getElementById('openai-model').textContent = openai.model || 'GPT-4';
+                document.getElementById('openai-key').textContent = openai.keyPrefix || 'Não configurada';
+                document.getElementById('openai-status').textContent = 
+                    openai.status === 'ready' ? '✅ Pronto' :
+                    openai.status === 'configured_but_not_ready' ? '⚠️ Configurado mas não pronto' :
+                    openai.status === 'error' ? '❌ Erro' : '❌ Não configurado';
+                
+                const openaiBadge = document.getElementById('openai-badge');
+                if (openai.status === 'ready') {
+                    openaiBadge.className = 'px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800';
+                    openaiBadge.textContent = 'Ativo';
+                } else if (openai.configured) {
+                    openaiBadge.className = 'px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800';
+                    openaiBadge.textContent = 'Configurado';
+                } else {
+                    openaiBadge.className = 'px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800';
+                    openaiBadge.textContent = 'Inativo';
+                }
+                
+                // Update Gemini card
+                const gemini = data.services.gemini;
+                document.getElementById('gemini-model').textContent = gemini.model || 'Gemini 1.5 Flash';
+                document.getElementById('gemini-key').textContent = gemini.keyPrefix || 'Não configurada';
+                document.getElementById('gemini-status').textContent = 
+                    gemini.status === 'ready' ? '✅ Pronto' :
+                    gemini.status === 'error' ? '❌ Erro' : '❌ Não configurado';
+                
+                const geminiBadge = document.getElementById('gemini-badge');
+                if (gemini.status === 'ready') {
+                    geminiBadge.className = 'px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800';
+                    geminiBadge.textContent = 'Ativo';
+                } else if (gemini.configured) {
+                    geminiBadge.className = 'px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800';
+                    geminiBadge.textContent = 'Configurado';
+                } else {
+                    geminiBadge.className = 'px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800';
+                    geminiBadge.textContent = 'Inativo';
+                }
+                
+                // Update recommendation
+                document.getElementById('recommendation').innerHTML = 
+                    `<p class="${openai.status === 'ready' ? 'text-green-700' : 'text-orange-700'}">
+                        <i class="fas ${openai.status === 'ready' ? 'fa-check-circle' : 'fa-exclamation-triangle'} mr-2"></i>
+                        ${data.recommendation}
+                    </p>`;
+                
+            } catch (error) {
+                console.error('Error checking AI status:', error);
+                document.getElementById('primary-ai-badge').innerHTML = 
+                    '<i class="fas fa-exclamation-triangle mr-2"></i> Erro ao verificar status';
+                document.getElementById('recommendation').innerHTML = 
+                    '<p class="text-red-700"><i class="fas fa-times-circle mr-2"></i> Erro ao conectar com o servidor</p>';
+            }
+        }
+        
+        // Check status on load
+        checkAIStatus();
+        
+        // Auto-refresh every 10 seconds
+        setInterval(checkAIStatus, 10000);
+    </script>
+</body>
+</html>

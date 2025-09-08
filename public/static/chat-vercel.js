@@ -16,6 +16,9 @@ const messageInput = document.getElementById('message-input');
 const sendButton = document.getElementById('send-button');
 const typingIndicator = document.getElementById('typing-indicator');
 const statusText = document.getElementById('status-text');
+const aiIndicator = document.getElementById('ai-indicator');
+const aiBadge = document.getElementById('ai-badge');
+const aiName = document.getElementById('ai-name');
 
 // Chat history
 let chatHistory = [];
@@ -107,6 +110,9 @@ async function sendMessage() {
         if (response.data && responseText) {
             // Add assistant response to UI
             addMessageToUI(responseText, 'assistant');
+            
+            // Update AI indicator
+            updateAIIndicator(response.data.aiModel || 'local', response.data.aiStatus);
             
             // Update chat history
             chatHistory.push({
@@ -206,21 +212,74 @@ messageInput.addEventListener('keypress', (e) => {
     }
 });
 
+// Update AI indicator
+function updateAIIndicator(model, aiStatus) {
+    aiIndicator.classList.remove('hidden');
+    
+    // Set badge color and name based on model
+    if (model === 'gpt-4' || model === 'gpt-3.5-turbo') {
+        aiBadge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800';
+        aiName.textContent = '🧠 OpenAI GPT-4';
+    } else if (model === 'gemini-1.5-flash') {
+        aiBadge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800';
+        aiName.textContent = '✨ Google Gemini';
+    } else {
+        aiBadge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800';
+        aiName.textContent = '🔧 Local Query';
+    }
+    
+    // Show AI status in console
+    if (aiStatus) {
+        console.log('AI Status:', aiStatus);
+    }
+}
+
+// Check AI status
+async function checkAIStatus() {
+    try {
+        const response = await axios.get('/api/ai-status');
+        const data = response.data;
+        
+        console.log('🤖 AI Service Status:', data);
+        
+        // Update indicator based on primary AI
+        updateAIIndicator(data.primaryAI === 'openai' ? 'gpt-4' : 
+                         data.primaryAI === 'gemini' ? 'gemini-1.5-flash' : 
+                         'local', data.services);
+        
+        // Update status text based on configuration
+        if (data.services.openai.status === 'ready') {
+            statusText.textContent = '✅ OpenAI GPT-4 configurado e pronto';
+            statusText.className = 'text-green-600';
+        } else if (data.services.gemini.status === 'ready') {
+            statusText.textContent = '✨ Google Gemini configurado (OpenAI não configurado)';
+            statusText.className = 'text-purple-600';
+        } else {
+            statusText.textContent = '⚠️ Nenhuma IA configurada. Configure OpenAI para melhor desempenho.';
+            statusText.className = 'text-orange-600';
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Error checking AI status:', error);
+        return null;
+    }
+}
+
 // Check configuration status on load
 async function checkConfigStatus() {
     try {
+        // First check AI status
+        const aiStatus = await checkAIStatus();
+        
+        // Then check general config
         const response = await axios.get('/api/config');
         const data = response.data;
         
-        if (!data.hasApiKey) {
-            statusText.textContent = '⚠️ API do Google não configurada. Acesse as Configurações.';
+        // Only override status if there's a critical config issue
+        if (!data.hasDbUrl) {
+            statusText.textContent = '⚠️ Banco de dados não configurado.';
             statusText.className = 'text-orange-600';
-        } else if (!data.hasSystemPrompt) {
-            statusText.textContent = 'ℹ️ Prompt de comportamento não definido. Usando padrão.';
-            statusText.className = 'text-blue-600';
-        } else {
-            statusText.textContent = 'Pronto para conversar';
-            statusText.className = 'text-gray-500';
         }
     } catch (error) {
         console.error('Error checking config:', error);
@@ -234,4 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadChatHistory();
     checkConfigStatus();
     messageInput.focus();
+    
+    // Check AI status every 30 seconds
+    setInterval(checkAIStatus, 30000);
 });

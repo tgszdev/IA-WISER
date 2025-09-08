@@ -4,12 +4,14 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getSupabaseService } from '../lib/supabase'
 import { getSessionManager } from '../lib/session'
 import { getQueryGenerator } from '../lib/query-generator'
+import { OpenAIService } from '../lib/openai-service'
 
 type Bindings = {
   KV?: KVNamespace;
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   GOOGLE_API_KEY?: string;
+  OPENAI_API_KEY?: string;
 }
 
 interface ChatRequest {
@@ -45,6 +47,10 @@ chatRoutes.post('/api/chat-smart', async (c) => {
     const googleApiKey = c.env?.GOOGLE_API_KEY || 
                         process.env.GOOGLE_API_KEY ||
                         'your_google_api_key_here';
+                        
+    const openaiApiKey = c.env?.OPENAI_API_KEY || 
+                        process.env.OPENAI_API_KEY ||
+                        'your_openai_api_key_here';
     
     // Initialize services
     const supabase = getSupabaseService(supabaseUrl, supabaseKey);
@@ -83,14 +89,75 @@ chatRoutes.post('/api/chat-smart', async (c) => {
     
     // Format base response
     let response = queryGenerator.formatResults(intent, queryResults, message);
+    let aiModel = 'local';
     
-    // Enhance response with AI if available and confidence is low
-    if (googleApiKey && googleApiKey !== 'your_google_api_key_here' && intent.confidence < 0.7) {
+    // PRIORITY 1: Try OpenAI first (always, not just for low confidence)
+    if (openaiApiKey && openaiApiKey !== 'your_openai_api_key_here') {
       try {
+        console.log('🤖 Using OpenAI GPT-4 for response generation');
+        const openAI = new OpenAIService(openaiApiKey);
+        
+        if (openAI.isReady()) {
+          // Prepare inventory data for OpenAI
+          const inventoryData = {
+            queryResults: queryResults[0]?.data || [],
+            summary: queryResults[0]?.summary || {},
+            intent: intent,
+            totalItems: queryResults[0]?.count || 0
+          };
+          
+          // Generate response with OpenAI
+          response = await openAI.processInventoryQuery(
+            message,
+            inventoryData,
+            sessionHistory
+          );
+          
+          aiModel = 'gpt-4';
+          console.log('✅ OpenAI response generated successfully');
+        }
+      } catch (openaiError: any) {
+        console.log('⚠️ OpenAI failed, falling back to Google Gemini:', openaiError.message);
+        
+        // PRIORITY 2: Fallback to Google Gemini
+        if (googleApiKey && googleApiKey !== 'your_google_api_key_here') {
+          try {
+            console.log('🤖 Using Google Gemini as fallback');
+            const genAI = new GoogleGenerativeAI(googleApiKey);
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            
+            // Build context for AI
+            const context = `
+              Você é um assistente especializado em inventário.
+              
+              Pergunta do usuário: ${message}
+              
+              Dados do banco:
+              ${JSON.stringify(queryResults[0]?.data || {}, null, 2).slice(0, 1000)}
+              
+              Responda de forma clara e objetiva, usando os dados fornecidos.
+              Se não houver dados suficientes, informe isso claramente.
+            `;
+            
+            const aiResult = await model.generateContent(context);
+            const aiResponse = await aiResult.response;
+            response = aiResponse.text();
+            aiModel = 'gemini-1.5-flash';
+            console.log('✅ Gemini response generated successfully');
+          } catch (geminiError: any) {
+            console.log('⚠️ Gemini also failed, using local response:', geminiError.message);
+            aiModel = 'local';
+          }
+        }
+      }
+    } 
+    // PRIORITY 3: If no OpenAI, try Gemini directly
+    else if (googleApiKey && googleApiKey !== 'your_google_api_key_here') {
+      try {
+        console.log('🤖 Using Google Gemini (OpenAI not configured)');
         const genAI = new GoogleGenerativeAI(googleApiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         
-        // Build context for AI
         const context = `
           Você é um assistente especializado em inventário.
           
@@ -106,14 +173,21 @@ chatRoutes.post('/api/chat-smart', async (c) => {
         const aiResult = await model.generateContent(context);
         const aiResponse = await aiResult.response;
         response = aiResponse.text();
-      } catch (aiError: any) {
-        console.log('⚠️ AI enhancement failed, using base response:', aiError.message);
+        aiModel = 'gemini-1.5-flash';
+      } catch (geminiError: any) {
+        console.log('⚠️ Gemini failed, using local response:', geminiError.message);
+        aiModel = 'local';
       }
+    } else {
+      console.log('📝 Using local Query Generator (no AI configured)');
     }
     
-    // Add response indicator
+    // Add response indicator with AI model info
     const responseTime = Date.now() - startTime;
-    response += `\n\n📊 *[Query executada em ${responseTime}ms | Tipo: ${intent.type} | Confiança: ${Math.round(intent.confidence * 100)}%]*`;
+    const aiIndicator = aiModel === 'gpt-4' ? '🧠 GPT-4' : 
+                       aiModel === 'gemini-1.5-flash' ? '✨ Gemini' : 
+                       '🔧 Local';
+    response += `\n\n📊 *[${aiIndicator} | Query: ${responseTime}ms | Tipo: ${intent.type} | Confiança: ${Math.round(intent.confidence * 100)}%]*`;
     
     // Save assistant response to session
     await sessionManager.addMessage(sessionId, 'assistant', response, {
@@ -126,7 +200,7 @@ chatRoutes.post('/api/chat-smart', async (c) => {
     // Get session stats
     const sessionStats = await sessionManager.getSessionStats(sessionId);
     
-    // Return response
+    // Return response with AI model info
     return c.json({
       response,
       estoqueLoaded: true,
@@ -135,7 +209,12 @@ chatRoutes.post('/api/chat-smart', async (c) => {
       queryType: intent.type,
       confidence: intent.confidence,
       sessionStats,
-      responseTime
+      responseTime,
+      aiModel,  // Include which AI was used
+      aiStatus: {
+        openai: openaiApiKey && openaiApiKey !== 'your_openai_api_key_here' ? 'configured' : 'not_configured',
+        gemini: googleApiKey && googleApiKey !== 'your_google_api_key_here' ? 'configured' : 'not_configured'
+      }
     });
     
   } catch (error: any) {
@@ -235,6 +314,81 @@ chatRoutes.get('/api/config', async (c) => {
     hasApiKey: true,
     hasSystemPrompt: true,
     hasDbUrl: true
+  });
+});
+
+// AI Status endpoint - shows which AI services are available
+chatRoutes.get('/api/ai-status', async (c) => {
+  const openaiApiKey = c.env?.OPENAI_API_KEY || 
+                       process.env.OPENAI_API_KEY ||
+                       'your_openai_api_key_here';
+                       
+  const googleApiKey = c.env?.GOOGLE_API_KEY || 
+                       process.env.GOOGLE_API_KEY ||
+                       'your_google_api_key_here';
+  
+  const openaiConfigured = openaiApiKey && openaiApiKey !== 'your_openai_api_key_here';
+  const geminiConfigured = googleApiKey && googleApiKey !== 'your_google_api_key_here';
+  
+  let openaiStatus = 'not_configured';
+  let geminiStatus = 'not_configured';
+  
+  // Test OpenAI if configured
+  if (openaiConfigured) {
+    try {
+      const openAI = new OpenAIService(openaiApiKey);
+      openaiStatus = openAI.isReady() ? 'ready' : 'configured_but_not_ready';
+    } catch {
+      openaiStatus = 'error';
+    }
+  }
+  
+  // Test Gemini if configured
+  if (geminiConfigured) {
+    try {
+      const genAI = new GoogleGenerativeAI(googleApiKey);
+      // Simple test to see if we can create a model
+      genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      geminiStatus = 'ready';
+    } catch {
+      geminiStatus = 'error';
+    }
+  }
+  
+  // Determine primary AI
+  const primaryAI = openaiStatus === 'ready' ? 'openai' : 
+                   geminiStatus === 'ready' ? 'gemini' : 
+                   'local';
+  
+  return c.json({
+    primaryAI,
+    priority: [
+      '1. OpenAI GPT-4 (if configured)',
+      '2. Google Gemini (fallback)',
+      '3. Local Query Generator (always available)'
+    ],
+    services: {
+      openai: {
+        status: openaiStatus,
+        model: openaiStatus === 'ready' ? 'gpt-4' : null,
+        configured: openaiConfigured,
+        keyPrefix: openaiConfigured ? openaiApiKey.substring(0, 7) + '...' : null
+      },
+      gemini: {
+        status: geminiStatus,
+        model: geminiStatus === 'ready' ? 'gemini-1.5-flash' : null,
+        configured: geminiConfigured,
+        keyPrefix: geminiConfigured ? googleApiKey.substring(0, 7) + '...' : null
+      },
+      local: {
+        status: 'always_ready',
+        model: 'query-generator',
+        configured: true
+      }
+    },
+    recommendation: openaiStatus !== 'ready' ? 
+      'Configure OpenAI API key for best performance' : 
+      'System is using OpenAI GPT-4 for optimal responses'
   });
 });
 
