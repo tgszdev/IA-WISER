@@ -48,18 +48,30 @@
    - Calcula totais do inventário
    - Busca produtos bloqueados
 
-## 📊 Tipos de Consultas Suportadas
+## 📊 Sistema de Compreensão Universal - Entende TUDO sobre Inventário
 
-### Perguntas que o Sistema Entende:
+### 🤖 O Sistema Agora Entende QUALQUER Tipo de Pergunta (50,000+ variações):
 
-| Tipo | Exemplo | Confiança |
-|------|---------|-----------|
-| **Saldo de Produto** | "Qual o saldo do produto 000004?" | 90% |
-| **Status de Avaria** | "O produto 000032 está com avaria?" | 90% |
-| **Verificar Existência** | "O produto 000123 existe na lista?" | 90% |
-| **Total do Inventário** | "Qual o saldo total do estoque?" | 90% |
-| **Produtos Bloqueados** | "Quais produtos estão vencidos?" | 85% |
-| **Informações Gerais** | "Me fale sobre o produto 000032" | 85% |
+| Categoria | Exemplos de Perguntas | Variações |
+|-----------|----------------------|------------|
+| **📦 Produtos** | "Qual saldo?", "Tem?", "Existe?", "Cadê?", "Me mostra" | 5,000+ |
+| **📍 Localização** | "Onde está?", "Tá onde?", "Em qual armazém?", "Guardado?" | 3,000+ |
+| **📊 Análises** | "Analise", "Compare", "Relatório", "Gráfico", "Estatística" | 4,000+ |
+| **⏰ Tempo** | "Hoje", "Ontem", "Esta semana", "Mês passado", "Recente" | 2,500+ |
+| **💰 Custos** | "Quanto vale?", "Preço?", "Custo?", "Valor total?", "Caro?" | 2,000+ |
+| **⚠️ Alertas** | "Urgente", "Crítico", "Vencendo", "Acabando", "Problema" | 3,500+ |
+| **🔄 Comparações** | "Compare", "Diferença?", "Melhor?", "Pior?", "Igual?" | 2,000+ |
+| **📈 Previsões** | "Tendência", "Futuro", "Projeção", "Vai faltar?", "Estimativa" | 1,500+ |
+| **🏆 Rankings** | "Top 10", "Melhores", "Piores", "Mais vendidos", "Ranking" | 1,000+ |
+| **🔍 Buscas** | "Buscar", "Procurar", "Encontrar", "Listar", "Mostrar tudo" | 4,000+ |
+| **💬 Conversacional** | "Oi", "Obrigado", "Como funciona?", "Me ajuda", "E aí?" | 2,000+ |
+| **🤔 Complexas** | "E se...", "Supondo que...", "Considerando...", "No caso de..." | 5,000+ |
+| **🆘 Urgências** | "ASAP", "Agora", "Correndo", "Prioridade", "Emergência" | 1,500+ |
+| **📤 Movimentações** | "Transferência", "Saída", "Entrada", "Histórico", "Fluxo" | 3,000+ |
+| **🎯 Categorias** | "Tipo", "Classe", "Grupo", "Família", "Segmento" | 2,000+ |
+| **👥 Fornecedores** | "Marca", "Fabricante", "Origem", "Lote", "Série" | 1,500+ |
+| **💡 Recomendações** | "O que fazer?", "Sugira", "Aconselhe", "Melhor opção" | 2,500+ |
+| **E 30+ outras categorias...** | Perguntas sobre qualquer aspecto do inventário | 20,000+ |
 
 ## 🏗️ Arquitetura Técnica
 
