@@ -95,7 +95,7 @@ chatRoutes.post('/api/chat-smart', async (c) => {
     if (openaiApiKey && openaiApiKey !== 'your_openai_api_key_here') {
       try {
         console.log('🤖 Using OpenAI GPT-4 for response generation');
-        const openAI = new OpenAIService(openaiApiKey);
+        const openAI = new OpenAIService({ apiKey: openaiApiKey });
         
         if (openAI.isReady()) {
           // Prepare inventory data for OpenAI
@@ -336,7 +336,7 @@ chatRoutes.get('/api/ai-status', async (c) => {
   // Test OpenAI if configured
   if (openaiConfigured) {
     try {
-      const openAI = new OpenAIService(openaiApiKey);
+      const openAI = new OpenAIService({ apiKey: openaiApiKey });
       openaiStatus = openAI.isReady() ? 'ready' : 'configured_but_not_ready';
     } catch {
       openaiStatus = 'error';
