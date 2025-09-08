@@ -20,15 +20,25 @@ const aiIndicator = document.getElementById('ai-indicator');
 const aiBadge = document.getElementById('ai-badge');
 const aiName = document.getElementById('ai-name');
 
-// Chat history
+// Chat history - GARANTIR que é sempre um array
 let chatHistory = [];
 const sessionId = getSessionId();
+
+// Garantir que chatHistory é sempre um array
+if (!Array.isArray(chatHistory)) {
+    chatHistory = [];
+}
 
 // Load chat history on page load
 async function loadChatHistory() {
     try {
         const response = await axios.get(`/api/history/${sessionId}`);
-        chatHistory = response.data;
+        // GARANTIR que chatHistory é um array
+        if (Array.isArray(response.data)) {
+            chatHistory = response.data;
+        } else {
+            chatHistory = [];
+        }
         
         // Clear welcome message if there's history
         if (chatHistory.length > 0) {
@@ -39,6 +49,8 @@ async function loadChatHistory() {
         }
     } catch (error) {
         console.error('Error loading chat history:', error);
+        // Garantir que chatHistory é um array mesmo em caso de erro
+        chatHistory = [];
     }
 }
 
@@ -114,17 +126,31 @@ async function sendMessage() {
             // Update AI indicator
             updateAIIndicator(response.data.aiModel || 'local', response.data.aiStatus);
             
-            // Update chat history
-            chatHistory.push({
-                role: 'user',
-                content: message,
-                timestamp: new Date().toISOString()
-            });
-            chatHistory.push({
-                role: 'assistant',
-                content: responseText,
-                timestamp: response.data.timestamp || new Date().toISOString()
-            });
+            // Update chat history - VERIFICAR se é array antes
+            if (!Array.isArray(chatHistory)) {
+                console.warn('chatHistory não era um array, reinicializando...');
+                chatHistory = [];
+            }
+            
+            try {
+                chatHistory.push({
+                    role: 'user',
+                    content: message,
+                    timestamp: new Date().toISOString()
+                });
+                chatHistory.push({
+                    role: 'assistant',
+                    content: responseText,
+                    timestamp: response.data.timestamp || new Date().toISOString()
+                });
+            } catch (pushError) {
+                console.error('Erro ao adicionar ao histórico:', pushError);
+                // Reinicializar como array se houver erro
+                chatHistory = [
+                    { role: 'user', content: message, timestamp: new Date().toISOString() },
+                    { role: 'assistant', content: responseText, timestamp: new Date().toISOString() }
+                ];
+            }
             
             // Check if stock was loaded
             if (response.data.estoqueLoaded) {

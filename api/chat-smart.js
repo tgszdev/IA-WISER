@@ -278,24 +278,37 @@ export default async function handler(req, res) {
           systemPrompt += "⚠️ NUNCA INVENTE DADOS! Use APENAS os números fornecidos acima.\n";
           systemPrompt += "⚠️ O total REAL é ${inventoryData.stats.totalRegistros} registros, NÃO zero!\n\n";
           
-          // Se houver produto específico, incluir seus dados
+          // Se houver produto específico, incluir ANÁLISE COMPLETA
           if (inventoryData.specificProduct && inventoryData.specificProduct.data && inventoryData.specificProduct.data.length > 0) {
             const prod = inventoryData.specificProduct.data;
             const saldoTotal = prod.reduce((sum, item) => sum + (item.saldo_disponivel_produto || 0), 0);
-            systemPrompt += `PRODUTO ESPECÍFICO SOLICITADO:\n`;
-            systemPrompt += `- Código: ${prod[0].codigo_produto}\n`;
-            systemPrompt += `- Descrição: ${prod[0].descricao_produto}\n`;
-            systemPrompt += `- Total de registros: ${prod.length}\n`;
-            systemPrompt += `- Saldo total: ${saldoTotal} unidades\n`;
-            systemPrompt += `- Locais: ${prod.map(p => p.local_produto).join(', ')}\n\n`;
+            const saldoBloqueado = prod.reduce((sum, item) => sum + (parseFloat(item.saldo_bloqueado_produto) || 0), 0);
+            
+            systemPrompt += `📦 PRODUTO ESPECÍFICO - DADOS COMPLETOS:\n`;
+            systemPrompt += `====================================\n`;
+            systemPrompt += `Código: ${prod[0].codigo_produto}\n`;
+            systemPrompt += `Descrição: ${prod[0].descricao_produto}\n`;
+            systemPrompt += `Total de registros: ${prod.length}\n\n`;
+            systemPrompt += `SALDOS:\n`;
+            systemPrompt += `- Saldo Disponível Total: ${saldoTotal} unidades\n`;
+            systemPrompt += `- Saldo Bloqueado Total: ${saldoBloqueado} unidades\n\n`;
+            systemPrompt += `DETALHAMENTO POR LOCAL:\n`;
+            prod.forEach((item, i) => {
+              systemPrompt += `${i+1}. Local: ${item.local_produto} | Saldo: ${item.saldo_disponivel_produto} | Lote: ${item.lote_industria_produto}\n`;
+            });
+            systemPrompt += `\n`;
           }
           
-          systemPrompt += "🔴 REGRAS CRÍTICAS:\n";
-          systemPrompt += "1. SEMPRE use os números EXATOS fornecidos (28.179 registros totais)\n";
-          systemPrompt += "2. NUNCA diga que há 0 produtos ou que não há dados\n";
-          systemPrompt += "3. SEMPRE mencione que você tem acesso a 100% dos dados\n";
-          systemPrompt += "4. Seja PRECISO com os números - não arredonde\n";
-          systemPrompt += "5. Se perguntarem sobre o total, a resposta é 28.179 registros\n";
+          systemPrompt += "🔴 REGRAS CRÍTICAS DE RESPOSTA:\n";
+          systemPrompt += "1. Quando perguntarem sobre um produto ESPECÍFICO, forneça ANÁLISE COMPLETA:\n";
+          systemPrompt += "   - Mostre o código e descrição\n";
+          systemPrompt += "   - Liste TODOS os locais com seus saldos\n";
+          systemPrompt += "   - Mostre saldo total e por local\n";
+          systemPrompt += "   - Inclua informações de lotes\n";
+          systemPrompt += "2. Use formato estruturado e organizado\n";
+          systemPrompt += "3. SEMPRE forneça detalhamento completo, não apenas totais\n";
+          systemPrompt += "4. Use emojis para melhor visualização (📦 📍 📊)\n";
+          systemPrompt += "5. Seja PRECISO com TODOS os números\n";
         } else if (inventoryData && inventoryData.data) {
           // Fallback se não tiver stats
           systemPrompt += "DADOS DO BANCO DE DADOS:\n";
@@ -303,10 +316,22 @@ export default async function handler(req, res) {
           systemPrompt += "Use APENAS os dados fornecidos acima para responder.";
         }
         
-        systemPrompt += "\nResponda em português brasileiro de forma clara e objetiva.";
+        systemPrompt += "\n🎯 FORMATO DE RESPOSTA OBRIGATÓRIO:\n";
+        systemPrompt += "Para consultas de produtos específicos, use este formato:\n";
+        systemPrompt += "📦 PRODUTO [CÓDIGO] - ANÁLISE COMPLETA:\n";
+        systemPrompt += "====================================\n";
+        systemPrompt += "Código: [código]\n";
+        systemPrompt += "Descrição: [descrição]\n";
+        systemPrompt += "Total de registros: [número]\n\n";
+        systemPrompt += "SALDOS:\n";
+        systemPrompt += "- Saldo Disponível Total: [total]\n";
+        systemPrompt += "- Saldo Bloqueado Total: [bloqueado]\n\n";
+        systemPrompt += "DETALHAMENTO POR LOCAL:\n";
+        systemPrompt += "[Liste TODOS os locais com formato: N. Local: XXX | Saldo: YYY | Lote: ZZZ]\n";
+        systemPrompt += "\nResponda SEMPRE com análise completa em português brasileiro.";
         
         const completion = await openai.chat.completions.create({
-          model: "gpt-4-turbo-preview", // Usar GPT-4 para melhor precisão
+          model: "gpt-4-turbo-preview", // GPT-4 para análise completa
           messages: [
             {
               role: "system",
@@ -317,8 +342,8 @@ export default async function handler(req, res) {
               content: message
             }
           ],
-          max_tokens: 500,
-          temperature: 0.3 // Mais determinístico para dados
+          max_tokens: 1500, // Aumentado para permitir resposta completa
+          temperature: 0.1 // Máxima precisão para dados
         });
         
         response = completion.choices[0].message.content;
