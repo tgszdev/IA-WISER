@@ -93,49 +93,67 @@ FORMATO:
 
       // Formata dados de inventário de forma mais estruturada
       if (inventoryData) {
-        let inventoryContext = 'DADOS DO INVENTÁRIO ATUAL:\n\n';
+        let inventoryContext = 'DADOS REAIS DO BANCO DE DADOS (SUPABASE):\n\n';
         
         // Adiciona resumo se disponível
         if (inventoryData.summary) {
-          inventoryContext += `RESUMO GERAL:\n`;
-          inventoryContext += `- Total de itens: ${inventoryData.totalItems || 0}\n`;
+          inventoryContext += `📊 RESUMO GERAL DO INVENTÁRIO:\n`;
+          inventoryContext += `- Total de itens no banco: ${inventoryData.totalItems || 0}\n`;
           inventoryContext += `- Produtos únicos: ${inventoryData.summary.uniqueProducts || 0}\n`;
-          inventoryContext += `- Valor total: R$ ${inventoryData.summary.totalValue || 0}\n\n`;
+          inventoryContext += `- Valor total do estoque: R$ ${inventoryData.summary.totalValue || 0}\n`;
+          inventoryContext += `- Produtos com estoque baixo: ${inventoryData.summary.lowStockItems || 0}\n`;
+          inventoryContext += `- Produtos bloqueados: ${inventoryData.summary.blockedItems || 0}\n\n`;
         }
         
-        // Adiciona dados dos produtos
+        // Adiciona dados dos produtos de forma mais clara
         if (inventoryData.queryResults && inventoryData.queryResults.length > 0) {
-          inventoryContext += `PRODUTOS ENCONTRADOS:\n`;
+          inventoryContext += `📦 PRODUTOS ENCONTRADOS NO BANCO (${inventoryData.queryResults.length} registros):\n`;
+          inventoryContext += `════════════════════════════════════════════\n`;
+          
           inventoryData.queryResults.forEach((item: any, index: number) => {
-            if (index < 10) { // Limita a 10 produtos para não sobrecarregar
-              inventoryContext += `\nProduto ${index + 1}:\n`;
-              inventoryContext += `- Código: ${item.codigo_produto || 'N/A'}\n`;
-              inventoryContext += `- Descrição: ${item.descricao_produto || 'N/A'}\n`;
-              inventoryContext += `- Saldo Disponível: ${item.saldo_disponivel_produto || 0}\n`;
-              inventoryContext += `- Saldo Bloqueado: ${item.saldo_bloqueado_produto || 'Nenhum'}\n`;
-              inventoryContext += `- Local: ${item.local_produto || 'N/A'}\n`;
-              inventoryContext += `- Armazém: ${item.armazem || 'N/A'}\n`;
-              if (item.lote_industria_produto) {
-                inventoryContext += `- Lote: ${item.lote_industria_produto}\n`;
+            if (index < 15) { // Aumenta para 15 produtos
+              inventoryContext += `\n${index + 1}. PRODUTO:\n`;
+              inventoryContext += `   📌 Código: ${item.codigo_produto || item.codigo || 'N/A'}\n`;
+              inventoryContext += `   📝 Descrição: ${item.descricao_produto || item.descricao || 'N/A'}\n`;
+              inventoryContext += `   📊 Saldo Disponível: ${item.saldo_disponivel_produto || item.saldo || 0} unidades\n`;
+              
+              if (item.saldo_bloqueado_produto) {
+                inventoryContext += `   ⚠️ Status Bloqueado: ${item.saldo_bloqueado_produto}\n`;
+              }
+              
+              inventoryContext += `   📍 Localização: ${item.local_produto || item.local || 'N/A'}\n`;
+              inventoryContext += `   🏢 Armazém: ${item.armazem || 'N/A'}\n`;
+              
+              if (item.lote_industria_produto || item.lote) {
+                inventoryContext += `   🏷️ Lote: ${item.lote_industria_produto || item.lote}\n`;
+              }
+              
+              if (item.preco_unitario || item.preco) {
+                inventoryContext += `   💰 Preço: R$ ${item.preco_unitario || item.preco}\n`;
               }
             }
           });
           
-          if (inventoryData.queryResults.length > 10) {
-            inventoryContext += `\n... e mais ${inventoryData.queryResults.length - 10} produtos\n`;
+          if (inventoryData.queryResults.length > 15) {
+            inventoryContext += `\n════════════════════════════════════════════\n`;
+            inventoryContext += `... e mais ${inventoryData.queryResults.length - 15} produtos no banco de dados\n`;
           }
         } else {
-          inventoryContext += 'Nenhum produto encontrado no banco de dados.\n';
+          inventoryContext += '⚠️ NENHUM PRODUTO ENCONTRADO para esta consulta.\n';
+          inventoryContext += 'O banco de dados não retornou resultados para os critérios especificados.\n';
         }
         
         // Adiciona informações sobre a intenção detectada
         if (inventoryData.intent) {
-          inventoryContext += `\nINTENÇÃO DETECTADA: ${inventoryData.intent.type}\n`;
-          inventoryContext += `CONFIANÇA: ${Math.round((inventoryData.intent.confidence || 0) * 100)}%\n`;
+          inventoryContext += `\n🎯 ANÁLISE DA CONSULTA:\n`;
+          inventoryContext += `- Tipo de consulta: ${inventoryData.intent.type}\n`;
+          inventoryContext += `- Confiança na análise: ${Math.round((inventoryData.intent.confidence || 0) * 100)}%\n`;
           if (inventoryData.intent.entities?.productCode) {
-            inventoryContext += `PRODUTO PESQUISADO: ${inventoryData.intent.entities.productCode}\n`;
+            inventoryContext += `- Produto pesquisado: ${inventoryData.intent.entities.productCode}\n`;
           }
         }
+        
+        inventoryContext += `\n⚠️ IMPORTANTE: Use APENAS os dados acima para responder. Não invente informações.\n`;
         
         messages.push({
           role: 'system',
