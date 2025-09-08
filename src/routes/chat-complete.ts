@@ -168,6 +168,16 @@ function analyzeQuery(message: string): Query {
     confidence: 0
   };
   
+  // Extrair localização primeiro (formato específico)
+  const locationPattern = /\b(\d{9})\b/g;
+  const locationMatch = message.match(locationPattern);
+  if (locationMatch) {
+    query.entities.location = locationMatch[0];
+    query.intent = 'location_query';
+    query.type = 'location';
+    query.confidence = 0.95;
+  }
+  
   // Extrair código do produto
   const productPatterns = [
     /\b(RM\s*\d+)\b/gi,
@@ -218,12 +228,96 @@ function analyzeQuery(message: string): Query {
     query.type = 'balance_query';
   }
   
+  // Se não identificou intenção mas tem número de 9 dígitos, é localização
+  if (!query.intent && locationMatch) {
+    query.intent = 'location_query';
+    query.type = 'location';
+    query.confidence = 0.9;
+  }
+  
   return query;
+}
+
+// Formatar resposta de localização
+function formatLocationResponse(locationData: InventoryItem[], location: string): string {
+  if (!locationData || locationData.length === 0) {
+    return `❌ Nenhum produto encontrado no local ${location}`;
+  }
+  
+  let response = `📍 **LOCAL ${location} - PRODUTOS ARMAZENADOS**\n`;
+  response += `${'='.repeat(50)}\n\n`;
+  response += `**Total de produtos neste local**: ${locationData.length}\n\n`;
+  response += `**DETALHAMENTO DOS PRODUTOS**:\n\n`;
+  
+  // Agrupar por produto
+  const byProduct: Record<string, InventoryItem[]> = {};
+  locationData.forEach(item => {
+    if (!byProduct[item.codigo_produto]) {
+      byProduct[item.codigo_produto] = [];
+    }
+    byProduct[item.codigo_produto].push(item);
+  });
+  
+  let index = 1;
+  Object.entries(byProduct).forEach(([code, items]) => {
+    const totalSaldo = items.reduce((sum, item) => sum + (item.saldo_disponivel_produto || 0), 0);
+    const first = items[0];
+    
+    response += `${index}. **${code}** - ${first.descricao_produto}\n`;
+    response += `   • Saldo Total: ${totalSaldo.toLocaleString('pt-BR')} ${first.unidade_medida || 'UN'}\n`;
+    
+    if (items.length === 1) {
+      response += `   • Lote: ${first.lote_industria_produto || 'N/A'}\n`;
+      if (first.saldo_bloqueado_produto) {
+        response += `   • ⚠️ Status: ${first.saldo_bloqueado_produto}\n`;
+      }
+    } else {
+      response += `   • Lotes: `;
+      items.forEach((item, i) => {
+        if (i > 0) response += ', ';
+        response += item.lote_industria_produto || 'N/A';
+      });
+      response += '\n';
+    }
+    
+    if (first.armazem) {
+      response += `   • Armazém: ${first.armazem}\n`;
+    }
+    
+    response += '\n';
+    index++;
+  });
+  
+  return response;
 }
 
 // Gerar resposta detalhada
 function generateDetailedResponse(query: Query, inventory: any): string {
   const { intent, entities } = query;
+  
+  // Consulta por localização PRIMEIRO
+  if (intent === 'location_query' && entities.location) {
+    const locationData = inventory.byLocation[entities.location];
+    
+    if (!locationData || locationData.length === 0) {
+      // Tentar busca parcial
+      const possibleLocations = Object.keys(inventory.byLocation).filter(loc => 
+        loc.includes(entities.location)
+      );
+      
+      if (possibleLocations.length > 0) {
+        const actualLocation = possibleLocations[0];
+        const actualData = inventory.byLocation[actualLocation];
+        return formatLocationResponse(actualData, actualLocation);
+      }
+      
+      return `❌ Local "${entities.location}" não encontrado no sistema.\n\n` +
+             `📍 Alguns locais disponíveis:\n` +
+             Object.keys(inventory.byLocation).slice(0, 10).join(', ');
+    }
+    
+    return formatLocationResponse(locationData, entities.location);
+  }
   
   // Produto específico
   if (intent === 'product_balance' && entities.productCode) {
