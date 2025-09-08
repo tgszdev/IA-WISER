@@ -1,353 +1,88 @@
-// Chat Inteligente - Query Generator Simplificado
+// Vercel serverless function for smart chat
+import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createClient } from '@supabase/supabase-js';
 
-// Configuração
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tecvgnrqcfqcrcodrjtt.supabase.co',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
+// Simple intent patterns for common queries
+const intentPatterns = {
+  productBalance: /(?:saldo|quantidade|estoque|disponível).*(produto|cod|código|item)?\s*(\d{3,})/i,
+  productInfo: /(?:qual|quanto|mostr|info|detalh|sobre|me fal|me dig).*(produto|cod|código|item)?\s*(\d{3,})/i,
+  totalInventory: /(?:total|soma|quanto|tudo|geral).*(?:estoque|inventário|saldo)/i,
+  greeting: /^(oi|olá|ola|bom dia|boa tarde|boa noite|hey|alô|e aí|tudo bem|como vai)$/i,
+  help: /(?:ajuda|help|como|tutorial|instrução|manual|guia|explicação|ensina|aprend|entend|dúvida|pergunt)/i,
+};
 
-const genAI = process.env.GOOGLE_API_KEY ? 
-  new GoogleGenerativeAI(process.env.GOOGLE_API_KEY) : null;
+// Mock inventory data for testing
+const mockInventory = [
+  { codigo: '000004', descricao: 'PRODUTO ESPECIAL 004', saldo: 850, lotes: 2, local: 'BARUERI' },
+  { codigo: '000032', descricao: 'PRODUTO TESTE EXEMPLO 032', saldo: 1250, lotes: 3, local: 'BARUERI' },
+  { codigo: '000123', descricao: 'PRODUTO DEMO 123', saldo: 500, lotes: 1, local: 'BARUERI' },
+];
 
-// Store de sessões em memória (substitua por Redis/DB em produção)
-const sessionStore = global.sessionStore || new Map();
-global.sessionStore = sessionStore;
-
-// Analisador de intenção melhorado
-function analyzeIntent(message, sessionHistory = []) {
+function analyzeIntent(message) {
   const lower = message.toLowerCase();
   
-  // Extrair código do produto se houver
-  const productMatch = message.match(/\b(\d{4,})\b/);
-  const productCode = productMatch ? productMatch[1] : null;
+  // Extract product code if present
+  const productMatch = message.match(/\b(\d{3,})\b/);
+  const productCode = productMatch ? productMatch[1].padStart(6, '0') : null;
   
-  // Detectar perguntas sobre avaria/vencido
-  if ((lower.includes('avaria') || lower.includes('vencido') || lower.includes('bloqueado')) && productCode) {
-    return { 
-      type: 'product_status', 
-      product: productCode,
-      checkStatus: true,
-      statusType: lower.includes('avaria') ? 'Avaria' : 'Vencido'
-    };
-  }
-  
-  // Verificar se produto está na lista
-  if (lower.includes('lista') && productCode) {
-    return { type: 'check_product_exists', product: productCode };
-  }
-  
-  // Detectar saldo de produto específico
-  if ((lower.includes('saldo') || lower.includes('quantidade')) && productCode) {
-    return { type: 'product_balance', product: productCode };
-  }
-  
-  // Saldo total
-  if (lower.includes('saldo total') || lower.includes('total do estoque')) {
-    return { type: 'total_inventory' };
-  }
-  
-  // Produtos bloqueados em geral
-  if (lower.includes('bloqueado') || lower.includes('vencido') || lower.includes('avaria')) {
-    return { type: 'blocked_items' };
-  }
-  
-  // Se tiver código de produto sem contexto específico
-  if (productCode) {
-    return { type: 'product_info', product: productCode };
-  }
-  
-  return { type: 'general', message };
-}
-
-// Executar query baseada na intenção
-async function executeQuery(intent) {
-  console.log('🎯 Intenção detectada:', JSON.stringify(intent));
-  
-  try {
-    switch (intent.type) {
-      case 'check_product_exists': {
-        // Verificar se produto existe
-        const { data, error } = await supabase
-          .from('estoque')
-          .select('*')
-          .eq('codigo_produto', intent.product);
-        
-        if (error) throw error;
-        
-        return {
-          type: 'product_exists',
-          product: intent.product,
-          exists: data && data.length > 0,
-          count: data.length,
-          data: data
-        };
-      }
-      
-      case 'product_status': {
-        // Buscar produto com status específico
-        const { data, error } = await supabase
-          .from('estoque')
-          .select('*')
-          .eq('codigo_produto', intent.product);
-        
-        if (error) throw error;
-        
-        // Filtrar por status
-        const withStatus = data.filter(item => 
-          item.saldo_bloqueado_produto === intent.statusType
-        );
-        
-        return {
-          type: 'product_status',
-          product: intent.product,
-          statusType: intent.statusType,
-          totalItems: data.length,
-          itemsWithStatus: withStatus.length,
-          hasStatus: withStatus.length > 0,
-          details: withStatus,
-          allData: data
-        };
-      }
-      
-      case 'product_info': {
-        // Informações gerais do produto
-        const { data, error } = await supabase
-          .from('estoque')
-          .select('*')
-          .eq('codigo_produto', intent.product);
-        
-        if (error) throw error;
-        
-        const total = data.reduce((sum, item) => 
-          sum + (parseFloat(item.saldo_disponivel_produto) || 0), 0);
-        
-        const blocked = data.filter(item => 
-          item.saldo_bloqueado_produto === 'Vencido' || 
-          item.saldo_bloqueado_produto === 'Avaria'
-        );
-        
-        return {
-          type: 'product_info',
-          product: intent.product,
-          exists: data.length > 0,
-          description: data[0]?.descricao_produto || 'Produto não encontrado',
-          total_balance: total,
-          lots_count: data.length,
-          blocked_count: blocked.length,
-          blocked_details: blocked,
-          data: data
-        };
-      }
-      
-      case 'product_balance': {
-        // Buscar saldo de produto específico
-        const { data, error } = await supabase
-          .from('estoque')
-          .select('*')
-          .eq('codigo_produto', intent.product);
-        
-        if (error) throw error;
-        
-        // Calcular totais
-        const total = data.reduce((sum, item) => 
-          sum + (parseFloat(item.saldo_disponivel_produto) || 0), 0);
-        
-        return {
-          type: 'product_balance',
-          product: intent.product,
-          description: data[0]?.descricao_produto || 'Produto',
-          total_balance: total,
-          lots_count: data.length,
-          lots: data.map(item => ({
-            lote: item.lote_industria_produto,
-            saldo: parseFloat(item.saldo_disponivel_produto) || 0,
-            armazem: item.armazem || 'BARUERI'
-          })),
-          raw_data: data
-        };
-      }
-      
-      case 'total_inventory': {
-        // Buscar todos e calcular total
-        const { data, error } = await supabase
-          .from('estoque')
-          .select('codigo_produto, saldo_disponivel_produto');
-        
-        if (error) throw error;
-        
-        const total = data.reduce((sum, item) => 
-          sum + (parseFloat(item.saldo_disponivel_produto) || 0), 0);
-        
-        const uniqueProducts = [...new Set(data.map(item => item.codigo_produto))];
-        
-        return {
-          type: 'total_inventory',
-          total_balance: total,
-          total_records: data.length,
-          unique_products: uniqueProducts.length
-        };
-      }
-      
-      case 'blocked_items': {
-        // Buscar itens bloqueados
-        const { data, error } = await supabase
-          .from('estoque')
-          .select('*')
-          .or('saldo_bloqueado_produto.eq.Vencido,saldo_bloqueado_produto.eq.Avaria');
-        
-        if (error) throw error;
-        
-        return {
-          type: 'blocked_items',
-          count: data.length,
-          items: data
-        };
-      }
-      
-      default: {
-        // Query geral - pegar amostra
-        const { data, error } = await supabase
-          .from('estoque')
-          .select('*')
-          .limit(10);
-        
-        if (error) throw error;
-        
-        return {
-          type: 'sample',
-          data: data
-        };
-      }
+  // Check patterns
+  for (const [type, pattern] of Object.entries(intentPatterns)) {
+    if (pattern.test(message)) {
+      return { type, productCode, confidence: 0.8 };
     }
-  } catch (error) {
-    console.error('❌ Erro na query:', error);
-    return {
-      type: 'error',
-      error: error.message
-    };
   }
+  
+  // Default
+  return { type: 'general', productCode, confidence: 0.5 };
 }
 
-// Formatar resposta melhorada
-function formatResponse(queryResult, originalMessage) {
-  switch (queryResult.type) {
-    case 'product_exists':
-      if (queryResult.exists) {
-        return `✅ **Sim, o produto ${queryResult.product} está na lista!**
-
-Encontrei **${queryResult.count} registros** deste produto no estoque.
-
-${queryResult.data[0]?.descricao_produto ? 
-  `**Descrição**: ${queryResult.data[0].descricao_produto}` : ''}
-
-Precisa de mais informações sobre este produto?`;
-      } else {
-        return `❌ **Produto ${queryResult.product} NÃO encontrado no estoque**
-
-Este código não existe na base de dados atual.
-Verifique se o código está correto ou tente outro produto.`;
-      }
-      
-    case 'product_status':
-      if (queryResult.hasStatus) {
-        return `⚠️ **Produto ${queryResult.product} - Status ${queryResult.statusType}**
-
-**Situação**: ${queryResult.itemsWithStatus} de ${queryResult.totalItems} lotes estão com ${queryResult.statusType}
-
-**Detalhes dos lotes com ${queryResult.statusType}**:
-${queryResult.details.map((item, i) => 
-  `${i+1}. Lote ${item.lote_industria_produto}
-   - Local: ${item.local_produto || 'N/A'}
-   - Armazém: ${item.armazem || 'BARUERI'}
-   - Status: ${item.saldo_bloqueado_produto}`
-).join('\n\n')}
-
-**Motivo**: Os produtos marcados como "${queryResult.statusType}" foram bloqueados no sistema.
-${queryResult.statusType === 'Avaria' ? 
-  'Avaria indica dano físico ou problema de qualidade no produto.' :
-  'Vencido indica que o produto passou da data de validade.'}`;
-      } else {
-        return `✅ **Produto ${queryResult.product} - Sem ${queryResult.statusType}**
-
-Nenhum lote deste produto está marcado como ${queryResult.statusType}.
-Total de ${queryResult.totalItems} lotes encontrados, todos em outras condições.`;
-      }
-      
-    case 'product_info':
-      if (!queryResult.exists) {
-        return `❌ **Produto ${queryResult.product} não encontrado**`;
-      }
-      
-      return `📦 **Produto ${queryResult.product} - ${queryResult.description}**
-
-**Status Geral**:
-• Total de lotes: ${queryResult.lots_count}
-• Saldo disponível: ${queryResult.total_balance.toLocaleString('pt-BR')} unidades
-• Lotes bloqueados: ${queryResult.blocked_count}
-
-${queryResult.blocked_count > 0 ? `
-**⚠️ Atenção - Lotes Bloqueados**:
-${queryResult.blocked_details.map(item => 
-  `• Lote ${item.lote_industria_produto}: ${item.saldo_bloqueado_produto}`
-).join('\n')}` : '✅ Nenhum lote bloqueado'}
-
-${queryResult.data[0]?.armazem ? 
-  `**Localização**: Armazém ${queryResult.data[0].armazem}` : ''}`;
-      
-    case 'product_balance':
-      return `📦 **Produto ${queryResult.product} - ${queryResult.description}**
-
-**Saldo Total Disponível**: ${queryResult.total_balance.toLocaleString('pt-BR')} unidades
-**Total de Lotes**: ${queryResult.lots_count} lotes
-
-**Detalhes por Lote**:
-${queryResult.lots.map((lot, i) => 
-  `${i+1}. Lote ${lot.lote}: ${lot.saldo} unidades (${lot.armazem})`
-).join('\n')}
-
-**Localização**: Armazém ${queryResult.lots[0]?.armazem || 'BARUERI'}`;
-
-    case 'total_inventory':
-      return `📊 **Saldo Total do Estoque**
-
-**Total Geral Disponível**: ${queryResult.total_balance.toLocaleString('pt-BR', { minimumFractionDigits: 1 })} unidades
-**Total de Registros**: ${queryResult.total_records.toLocaleString('pt-BR')}
-**Produtos Únicos**: ${queryResult.unique_products}
-
-*Este total considera apenas saldos disponíveis.*`;
-
-    case 'blocked_items':
-      return `⚠️ **Itens Bloqueados no Estoque**
-
-**Total de Itens Bloqueados**: ${queryResult.count} registros
-
-${queryResult.count > 0 ? 
-  'Estes itens estão marcados como "Vencido" ou "Avaria" e não estão disponíveis para venda.' :
-  'Não há itens bloqueados no momento.'}`;
-
-    case 'error':
-      return `❌ **Erro ao consultar banco de dados**
-
-${queryResult.error}
-
-Por favor, tente novamente ou verifique a conexão.`;
-
-    default:
-      return `📋 **Informações do Estoque**
-
-Encontrei ${queryResult.data?.length || 0} registros relacionados à sua pergunta.
-
-Use perguntas mais específicas como:
-- "Qual o saldo do produto 000004?"
-- "Qual o saldo total do estoque?"
-- "Quantos produtos estão bloqueados?"`;
+function getLocalResponse(intent, message) {
+  const { type, productCode } = intent;
+  
+  if (type === 'greeting') {
+    return '👋 Olá! Sou o Wiser IA Assistant. Posso ajudá-lo com informações sobre o inventário. Pergunte sobre saldos, produtos, ou peça uma análise!';
   }
+  
+  if (type === 'help') {
+    return `📚 **Como posso ajudar:**\n\n` +
+           `• "Qual o saldo do produto 000004?"\n` +
+           `• "Me fale sobre o produto 123"\n` +
+           `• "Qual o total do estoque?"\n` +
+           `• "Faça uma análise do inventário"\n` +
+           `• "Produtos com estoque baixo"\n\n` +
+           `Digite sua pergunta e eu responderei com as informações disponíveis!`;
+  }
+  
+  if (productCode && (type === 'productBalance' || type === 'productInfo')) {
+    const product = mockInventory.find(p => p.codigo === productCode);
+    if (product) {
+      return `📦 **Produto ${product.codigo}**\n\n` +
+             `**Descrição**: ${product.descricao}\n` +
+             `**Saldo disponível**: ${product.saldo} unidades\n` +
+             `**Lotes**: ${product.lotes}\n` +
+             `**Localização**: ${product.local}`;
+    }
+    return `❌ Produto ${productCode} não encontrado no sistema.`;
+  }
+  
+  if (type === 'totalInventory') {
+    const total = mockInventory.reduce((sum, p) => sum + p.saldo, 0);
+    return `📊 **Resumo do Inventário**\n\n` +
+           `**Total de produtos**: ${mockInventory.length}\n` +
+           `**Saldo total**: ${total.toLocaleString('pt-BR')} unidades\n` +
+           `**Localização**: BARUERI`;
+  }
+  
+  return `📋 **Processando sua pergunta**\n\n` +
+         `Entendi que você quer saber sobre: "${message}"\n\n` +
+         `Para melhor precisão, tente perguntas como:\n` +
+         `• "Qual o saldo do produto 000004?"\n` +
+         `• "Qual o total do estoque?"\n` +
+         `• "Me fale sobre o produto 123"`;
 }
 
 export default async function handler(req, res) {
-  // CORS
+  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -356,69 +91,108 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const startTime = Date.now();
+  
   try {
-    const { message, sessionId, history } = req.body;
-    console.log('\n🤖 CHAT SMART - Nova requisição:', message);
-    console.log('📝 SessionId:', sessionId);
+    const { message, sessionId } = req.body;
     
-    // Gerenciar sessão
-    let sessionHistory = sessionStore.get(sessionId) || [];
-    if (history && history.length > 0) {
-      sessionHistory = history;
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
     }
     
-    // Adicionar mensagem atual ao histórico
-    sessionHistory.push({
-      role: 'user',
-      content: message,
-      timestamp: new Date().toISOString()
-    });
+    console.log(`Processing: "${message}" for session: ${sessionId}`);
     
-    // Analisar intenção
+    // Analyze intent
     const intent = analyzeIntent(message);
+    let response = '';
+    let aiModel = 'local';
     
-    // Executar query
-    const queryResult = await executeQuery(intent);
-    
-    // Formatar resposta
-    let response = formatResponse(queryResult, message);
-    
-    // Se tiver IA configurada, pode melhorar a resposta
-    if (genAI && queryResult.type !== 'error') {
+    // Try OpenAI first
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (openaiKey && !openaiKey.includes('your_') && !openaiKey.includes('xxx')) {
       try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const improvePrompt = `
-        Melhore esta resposta mantendo os dados exatos, mas tornando-a mais natural:
+        console.log('Trying OpenAI...');
+        const openai = new OpenAI({ apiKey: openaiKey });
         
-        ${response}
+        const completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: "Você é um assistente especializado em gestão de inventário. Responda em português de forma clara e objetiva."
+            },
+            {
+              role: "user",
+              content: message
+            }
+          ],
+          max_tokens: 500,
+          temperature: 0.7
+        });
         
-        Mantenha todos os números e informações, apenas melhore a apresentação.
-        `;
+        response = completion.choices[0].message.content;
+        aiModel = 'gpt-3.5-turbo';
+        console.log('OpenAI response generated');
         
-        const result = await model.generateContent(improvePrompt);
-        response = result.response.text();
-      } catch (aiError) {
-        console.log('IA não disponível, usando resposta padrão');
+      } catch (error) {
+        console.log('OpenAI failed:', error.message);
+        
+        // Try Google Gemini as fallback
+        const googleKey = process.env.GOOGLE_API_KEY;
+        if (googleKey && !googleKey.includes('your_') && !googleKey.includes('xxx')) {
+          try {
+            console.log('Trying Google Gemini...');
+            const genAI = new GoogleGenerativeAI(googleKey);
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            
+            const result = await model.generateContent(message);
+            response = result.response.text();
+            aiModel = 'gemini-1.5-flash';
+            console.log('Gemini response generated');
+            
+          } catch (geminiError) {
+            console.log('Gemini also failed:', geminiError.message);
+          }
+        }
       }
     }
     
-    // Adicionar indicador
-    response += '\n\n📊 *[Query executada diretamente no banco]*';
+    // If no AI worked, use local response
+    if (!response) {
+      console.log('Using local response');
+      response = getLocalResponse(intent, message);
+      aiModel = 'local';
+    }
     
-    // Responder
-    res.status(200).json({
+    // Add AI indicator to response
+    const aiIndicator = aiModel === 'gpt-3.5-turbo' ? '🧠 GPT-3.5' : 
+                       aiModel === 'gemini-1.5-flash' ? '✨ Gemini' : 
+                       '🔧 Local';
+    
+    response += `\n\n📊 *[${aiIndicator} | ${Date.now() - startTime}ms | Confiança: ${Math.round(intent.confidence * 100)}%]*`;
+    
+    return res.status(200).json({
       response,
-      estoqueLoaded: true,
-      totalProdutos: queryResult.raw_data?.length || queryResult.data?.length || 0,
-      dbStatus: queryResult.type === 'error' ? 'error' : 'connected',
-      queryType: queryResult.type
+      aiModel,
+      queryType: intent.type,
+      confidence: intent.confidence,
+      responseTime: Date.now() - startTime,
+      sessionId,
+      aiStatus: {
+        openai: openaiKey ? 'configured' : 'not_configured',
+        gemini: process.env.GOOGLE_API_KEY ? 'configured' : 'not_configured'
+      }
     });
     
   } catch (error) {
-    console.error('❌ Erro:', error);
-    res.status(500).json({
+    console.error('Chat error:', error);
+    return res.status(500).json({
       error: error.message,
-      response: `Erro: ${error.message}`
+      response: `❌ Erro ao processar mensagem: ${error.message}`
     });
   }
 }

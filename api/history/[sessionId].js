@@ -1,20 +1,12 @@
-// Histórico de sessão usando memória (já que Edge Config é read-only)
-const sessionStore = global.sessionStore || new Map();
-global.sessionStore = sessionStore;
-
+// Vercel serverless function for session history
 export default async function handler(req, res) {
-  // Configurar CORS
-  res.setHeader('Access-Control-Allow-Credentials', true);
+  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return res.status(200).end();
   }
 
   if (req.method !== 'GET') {
@@ -23,17 +15,8 @@ export default async function handler(req, res) {
 
   const { sessionId } = req.query;
 
-  try {
-    const sessionKey = `session_${sessionId}`;
-    const history = sessionStore.get(sessionKey) || [];
-    
-    return res.status(200).json(history);
-    
-  } catch (error) {
-    console.error('History error:', error);
-    return res.status(500).json({ 
-      error: 'Erro ao obter histórico',
-      message: 'O histórico é armazenado temporariamente em memória.'
-    });
-  }
+  // For now, return empty history (in production, this would connect to a database or KV store)
+  // In Vercel, you could use Vercel KV or another storage solution
+  
+  return res.status(200).json([]);
 }

@@ -1,16 +1,35 @@
 {
   "functions": {
     "api/*.js": {
-      "maxDuration": 10
+      "maxDuration": 30
     },
     "api/**/*.js": {
-      "maxDuration": 10
+      "maxDuration": 30
     }
   },
   "rewrites": [
     {
+      "source": "/api/chat-smart",
+      "destination": "/api/chat-smart.js"
+    },
+    {
+      "source": "/api/ai-status",
+      "destination": "/api/ai-status.js"
+    },
+    {
       "source": "/api/history/:sessionId",
       "destination": "/api/history/[sessionId].js"
+    },
+    {
+      "source": "/api/config",
+      "destination": "/api/config.js"
+    },
+    {
+      "source": "/api/test-connection",
+      "destination": "/api/test-connection.js"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
 }
