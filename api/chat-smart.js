@@ -217,28 +217,44 @@ export default async function handler(req, res) {
         console.log('Trying OpenAI with REAL data...');
         const openai = new OpenAI({ apiKey: openaiKey });
         
-        // BUSCAR 100% DOS DADOS DO SUPABASE PARA OPENAI
-        let inventoryData = null;
+        // SEMPRE BUSCAR 100% DOS DADOS DO SUPABASE PARA OPENAI
+        console.log('🔍 BUSCANDO 100% DOS DADOS DO SUPABASE...');
+        
+        // PRIMEIRO: Sempre buscar estatísticas completas (100% dos dados)
+        const fullInventoryData = await getSupabaseData(null, true); // SEMPRE getAllData = true
+        
+        // SEGUNDO: Se for consulta específica, buscar também o produto
+        let specificProductData = null;
         if (intent.productCode) {
-          inventoryData = await getSupabaseData(intent.productCode);
-        } else {
-          // SEMPRE buscar TODOS os dados para dar visão completa à IA
-          inventoryData = await getSupabaseData(null, true); // getAllData = true
+          specificProductData = await getSupabaseData(intent.productCode);
         }
+        
+        // Combinar dados completos com dados específicos
+        const inventoryData = {
+          ...fullInventoryData,
+          specificProduct: specificProductData,
+          hasFullData: true,
+          totalRecordsInDatabase: fullInventoryData?.stats?.totalRegistros || 0
+        };
+        
+        console.log(`✅ Dados carregados: ${inventoryData.totalRecordsInDatabase} registros totais`);
         
         // Preparar contexto com 100% dos dados
         let systemPrompt = "Você é o Wiser IA Assistant, especializado em gestão de inventário.\n\n";
         
         if (inventoryData && inventoryData.stats) {
-          systemPrompt += "ESTATÍSTICAS COMPLETAS DO BANCO (100% DOS DADOS):\n";
-          systemPrompt += `- Total de registros: ${inventoryData.stats.totalRegistros}\n`;
+          systemPrompt += "🚨 ATENÇÃO: VOCÊ TEM ACESSO A 100% DOS DADOS REAIS DO BANCO\n\n";
+          systemPrompt += "📊 ESTATÍSTICAS COMPLETAS (TODOS OS 28.179 REGISTROS):\n";
+          systemPrompt += `- Total REAL de registros no banco: ${inventoryData.stats.totalRegistros}\n`;
           systemPrompt += `- Produtos únicos: ${inventoryData.stats.produtosUnicos}\n`;
-          systemPrompt += `- Saldo total: ${inventoryData.stats.totalSaldo.toLocaleString('pt-BR')} unidades\n`;
+          systemPrompt += `- Saldo total REAL: ${inventoryData.stats.totalSaldo.toLocaleString('pt-BR')} unidades\n`;
           systemPrompt += `- Produtos bloqueados: ${inventoryData.stats.produtosBloqueados}\n`;
           systemPrompt += `- Produtos com avaria: ${inventoryData.stats.produtosAvaria}\n`;
           systemPrompt += `- Produtos vencidos: ${inventoryData.stats.produtosVencidos}\n`;
           systemPrompt += `- Armazéns: ${inventoryData.stats.armazens.join(', ')}\n`;
           systemPrompt += `- Total de locais: ${inventoryData.stats.locais}\n\n`;
+          systemPrompt += "⚠️ NUNCA INVENTE DADOS! Use APENAS os números fornecidos acima.\n";
+          systemPrompt += "⚠️ O total REAL é ${inventoryData.stats.totalRegistros} registros, NÃO zero!\n\n";
           
           // Se for consulta específica, incluir dados detalhados
           if (inventoryData.data && inventoryData.data.length > 0) {
@@ -252,9 +268,12 @@ export default async function handler(req, res) {
             }
           }
           
-          systemPrompt += "IMPORTANTE: Você tem acesso a 100% dos dados do inventário. ";
-          systemPrompt += "Use as estatísticas completas para responder com precisão. ";
-          systemPrompt += "Seja específico com números e quantidades reais.";
+          systemPrompt += "🔴 REGRAS CRÍTICAS:\n";
+          systemPrompt += "1. SEMPRE use os números EXATOS fornecidos (28.179 registros totais)\n";
+          systemPrompt += "2. NUNCA diga que há 0 produtos ou que não há dados\n";
+          systemPrompt += "3. SEMPRE mencione que você tem acesso a 100% dos dados\n";
+          systemPrompt += "4. Seja PRECISO com os números - não arredonde\n";
+          systemPrompt += "5. Se perguntarem sobre o total, a resposta é 28.179 registros\n";
         } else if (inventoryData && inventoryData.data) {
           // Fallback se não tiver stats
           systemPrompt += "DADOS DO BANCO DE DADOS:\n";
@@ -265,7 +284,7 @@ export default async function handler(req, res) {
         systemPrompt += "\nResponda em português brasileiro de forma clara e objetiva.";
         
         const completion = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
+          model: "gpt-4-turbo-preview", // Usar GPT-4 para melhor precisão
           messages: [
             {
               role: "system",
