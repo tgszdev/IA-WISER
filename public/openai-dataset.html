@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenAI + Dataset Completo - Wiser IA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .loading { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <div class="bg-white rounded-2xl shadow-xl p-8 mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-brain text-indigo-600 mr-3"></i>
+                OpenAI + 100% dos Dados
+            </h1>
+            <p class="text-gray-600 text-lg">
+                Sistema com acesso completo a todos os 28.179 registros do inventário
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Painel de Export -->
+            <div class="bg-white rounded-2xl shadow-xl p-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                    <i class="fas fa-download text-green-600 mr-2"></i>
+                    Exportar Dataset Completo
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h3 class="font-semibold text-gray-700 mb-2">📊 Estatísticas do Banco</h3>
+                        <div id="db-stats" class="text-sm text-gray-600">
+                            <div class="animate-pulse">Carregando estatísticas...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <button onclick="exportDataset('openai')" 
+                                class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 px-6 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg">
+                            <i class="fas fa-robot mr-2"></i>
+                            Exportar para OpenAI (JSON Otimizado)
+                        </button>
+                        
+                        <button onclick="exportDataset('csv')" 
+                                class="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg">
+                            <i class="fas fa-file-csv mr-2"></i>
+                            Exportar como CSV (Excel)
+                        </button>
+                        
+                        <button onclick="exportDataset('sql')" 
+                                class="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg">
+                            <i class="fas fa-database mr-2"></i>
+                            Exportar como SQL
+                        </button>
+                        
+                        <button onclick="exportDataset('json')" 
+                                class="w-full bg-gray-600 text-white py-3 px-6 rounded-lg hover:bg-gray-700 transition-all shadow-md hover:shadow-lg">
+                            <i class="fas fa-code mr-2"></i>
+                            Exportar como JSON
+                        </button>
+                    </div>
+                    
+                    <div id="export-status" class="hidden mt-4 p-4 rounded-lg"></div>
+                </div>
+                
+                <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                    <h4 class="font-semibold text-blue-900 mb-2">💡 Como usar com OpenAI:</h4>
+                    <ol class="text-sm text-blue-800 space-y-1">
+                        <li>1. Exporte no formato "OpenAI"</li>
+                        <li>2. Faça upload no Custom GPT</li>
+                        <li>3. Configure as instruções em português</li>
+                        <li>4. Pergunte sobre qualquer produto ou local</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Painel de Chat Direto -->
+            <div class="bg-white rounded-2xl shadow-xl p-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                    <i class="fas fa-comments text-purple-600 mr-2"></i>
+                    Chat com OpenAI (Dados Completos)
+                </h2>
+                
+                <div class="space-y-4">
+                    <!-- Status da API -->
+                    <div id="api-status" class="p-3 rounded-lg bg-gray-50 text-sm">
+                        <span class="font-semibold">Status:</span>
+                        <span id="api-status-text">Verificando...</span>
+                    </div>
+                    
+                    <!-- Área de Chat -->
+                    <div id="chat-messages" class="h-64 overflow-y-auto border rounded-lg p-4 space-y-3 bg-gray-50">
+                        <div class="text-gray-500 text-sm">
+                            Faça uma pergunta sobre o inventário...
+                        </div>
+                    </div>
+                    
+                    <!-- Input -->
+                    <div class="flex space-x-2">
+                        <input type="text" 
+                               id="chat-input" 
+                               placeholder="Ex: Qual o saldo do produto RM 123?"
+                               class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               onkeypress="if(event.key === 'Enter') sendMessage()">
+                        <button onclick="sendMessage()" 
+                                class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Exemplos -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setExample('Qual o saldo total do produto RM 123?')" 
+                                class="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors">
+                            Saldo do RM 123
+                        </button>
+                        <button onclick="setExample('O que está no local 034083501?')" 
+                                class="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors">
+                            Local 034083501
+                        </button>
+                        <button onclick="setExample('Quantos produtos estão vencidos?')" 
+                                class="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors">
+                            Produtos vencidos
+                        </button>
+                        <button onclick="setExample('Qual o valor total do estoque?')" 
+                                class="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded transition-colors">
+                            Valor total
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mt-6 p-4 bg-purple-50 rounded-lg">
+                    <h4 class="font-semibold text-purple-900 mb-2">🔧 Configuração:</h4>
+                    <div class="text-sm text-purple-800 space-y-2">
+                        <div>
+                            <label class="flex items-center space-x-2">
+                                <input type="checkbox" id="use-openai" checked class="rounded">
+                                <span>Usar OpenAI GPT-4</span>
+                            </label>
+                        </div>
+                        <div class="text-xs text-purple-600">
+                            Desmarque para usar processamento local
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instruções -->
+        <div class="bg-white rounded-2xl shadow-xl p-8 mt-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                <i class="fas fa-book text-blue-600 mr-2"></i>
+                Como Configurar OpenAI com Seus Dados
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6">
+                    <h3 class="font-bold text-indigo-800 mb-3">
+                        <i class="fas fa-cog mr-2"></i>1. Configure a API Key
+                    </h3>
+                    <div class="text-sm text-gray-700 space-y-2">
+                        <p>No arquivo <code class="bg-white px-1 rounded">.env</code>:</p>
+                        <pre class="bg-white p-2 rounded text-xs">OPENAI_API_KEY=sk-proj-xxx</pre>
+                        <p>Ou nas variáveis do Vercel/Cloudflare</p>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-6">
+                    <h3 class="font-bold text-emerald-800 mb-3">
+                        <i class="fas fa-download mr-2"></i>2. Exporte o Dataset
+                    </h3>
+                    <div class="text-sm text-gray-700 space-y-2">
+                        <p>Clique em "Exportar para OpenAI"</p>
+                        <p>Você receberá um arquivo com:</p>
+                        <ul class="list-disc list-inside text-xs">
+                            <li>28.179 registros completos</li>
+                            <li>Metadados e instruções</li>
+                            <li>Formato otimizado para GPT-4</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6">
+                    <h3 class="font-bold text-purple-800 mb-3">
+                        <i class="fas fa-robot mr-2"></i>3. Use no ChatGPT
+                    </h3>
+                    <div class="text-sm text-gray-700 space-y-2">
+                        <p>Crie um Custom GPT e faça upload</p>
+                        <p>Ou use a API diretamente:</p>
+                        <pre class="bg-white p-2 rounded text-xs">POST /api/openai-direct-connection</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração da API
+        const API_BASE = window.location.origin;
+        
+        // Carregar estatísticas
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/export-full-dataset?format=openai`);
+                const data = await response.json();
+                
+                document.getElementById('db-stats').innerHTML = `
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>📊 Total de Registros: <strong>${data.statistics.total_records.toLocaleString('pt-BR')}</strong></div>
+                        <div>📦 Produtos Únicos: <strong>${data.statistics.unique_products}</strong></div>
+                        <div>📍 Localizações: <strong>${data.statistics.unique_locations}</strong></div>
+                        <div>🏷️ Lotes: <strong>${data.statistics.unique_lots}</strong></div>
+                        <div>📈 Estoque Total: <strong>${data.statistics.total_available_stock.toLocaleString('pt-BR')}</strong></div>
+                        <div>⚠️ Bloqueados: <strong>${data.statistics.blocked_items}</strong></div>
+                    </div>
+                `;
+                
+                // Verificar status da API
+                const hasOpenAI = data.metadata && data.metadata.source_database;
+                document.getElementById('api-status-text').innerHTML = hasOpenAI 
+                    ? '<span class="text-green-600">✅ Conectado ao Supabase</span>'
+                    : '<span class="text-yellow-600">⚠️ Modo local (configure OPENAI_API_KEY)</span>';
+                    
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+                document.getElementById('db-stats').innerHTML = '<span class="text-red-600">Erro ao carregar estatísticas</span>';
+            }
+        }
+        
+        // Exportar dataset
+        async function exportDataset(format) {
+            const statusDiv = document.getElementById('export-status');
+            statusDiv.className = 'p-4 rounded-lg bg-blue-100 text-blue-800';
+            statusDiv.innerHTML = '<i class="fas fa-spinner loading mr-2"></i>Exportando dados...';
+            statusDiv.classList.remove('hidden');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/export-full-dataset?format=${format}`);
+                const blob = await response.blob();
+                
+                // Criar link de download
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                // Nome do arquivo baseado no formato
+                const extensions = {
+                    'openai': 'json',
+                    'csv': 'csv',
+                    'sql': 'sql',
+                    'json': 'json'
+                };
+                a.download = `estoque_completo_${new Date().toISOString().split('T')[0]}.${extensions[format]}`;
+                
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                statusDiv.className = 'p-4 rounded-lg bg-green-100 text-green-800';
+                statusDiv.innerHTML = '<i class="fas fa-check mr-2"></i>Download iniciado com sucesso!';
+                
+                setTimeout(() => {
+                    statusDiv.classList.add('hidden');
+                }, 3000);
+                
+            } catch (error) {
+                statusDiv.className = 'p-4 rounded-lg bg-red-100 text-red-800';
+                statusDiv.innerHTML = `<i class="fas fa-times mr-2"></i>Erro: ${error.message}`;
+            }
+        }
+        
+        // Enviar mensagem para chat
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            const messagesDiv = document.getElementById('chat-messages');
+            const useOpenAI = document.getElementById('use-openai').checked;
+            
+            // Adicionar mensagem do usuário
+            messagesDiv.innerHTML += `
+                <div class="flex justify-end">
+                    <div class="bg-purple-600 text-white px-4 py-2 rounded-lg max-w-md">
+                        ${message}
+                    </div>
+                </div>
+            `;
+            
+            // Limpar input
+            input.value = '';
+            
+            // Adicionar indicador de carregamento
+            messagesDiv.innerHTML += `
+                <div id="loading" class="flex justify-start">
+                    <div class="bg-gray-200 px-4 py-2 rounded-lg">
+                        <i class="fas fa-spinner loading mr-2"></i>Analisando 28.179 registros...
+                    </div>
+                </div>
+            `;
+            
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/openai-direct-connection`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        use_openai: useOpenAI
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Remover loading
+                document.getElementById('loading').remove();
+                
+                // Adicionar resposta
+                messagesDiv.innerHTML += `
+                    <div class="flex justify-start">
+                        <div class="bg-gray-100 px-4 py-2 rounded-lg max-w-md">
+                            <pre class="text-sm">${data.response}</pre>
+                            <div class="text-xs text-gray-500 mt-2">
+                                ${data.metadata.model} | ${data.metadata.total_records_analyzed} registros
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                document.getElementById('loading').remove();
+                messagesDiv.innerHTML += `
+                    <div class="flex justify-start">
+                        <div class="bg-red-100 text-red-800 px-4 py-2 rounded-lg max-w-md">
+                            Erro: ${error.message}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // Definir exemplo
+        function setExample(text) {
+            document.getElementById('chat-input').value = text;
+            document.getElementById('chat-input').focus();
+        }
+        
+        // Carregar ao iniciar
+        window.addEventListener('load', loadStats);
+    </script>
+</body>
+</html>
