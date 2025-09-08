@@ -11,12 +11,8 @@ const intentPatterns = {
   help: /(?:ajuda|help|como|tutorial|instrução|manual|guia|explicação|ensina|aprend|entend|dúvida|pergunt)/i,
 };
 
-// Mock inventory data for testing
-const mockInventory = [
-  { codigo: '000004', descricao: 'PRODUTO ESPECIAL 004', saldo: 850, lotes: 2, local: 'BARUERI' },
-  { codigo: '000032', descricao: 'PRODUTO TESTE EXEMPLO 032', saldo: 1250, lotes: 3, local: 'BARUERI' },
-  { codigo: '000123', descricao: 'PRODUTO DEMO 123', saldo: 500, lotes: 1, local: 'BARUERI' },
-];
+// REMOVENDO DADOS MOCK - USAR APENAS DADOS REAIS DO SUPABASE
+// const mockInventory = []; // REMOVIDO - NÃO USAR DADOS FALSOS
 
 function analyzeIntent(message) {
   const lower = message.toLowerCase();
@@ -36,11 +32,47 @@ function analyzeIntent(message) {
   return { type: 'general', productCode, confidence: 0.5 };
 }
 
-function getLocalResponse(intent, message) {
+// FUNÇÃO PARA BUSCAR DADOS REAIS DO SUPABASE
+async function getSupabaseData(productCode) {
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    
+    // USAR CREDENCIAIS NOVAS DO SUPABASE
+    const SUPABASE_URL = process.env.SUPABASE_URL || 'https://tecvgnrqcfqcrcodrjtt.supabase.co';
+    const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlY3ZnbnJxY2ZxY3Jjb2RyanR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNzYyNzUsImV4cCI6MjA3Mjc1MjI3NX0.zj1LLK8iDRCDq9SpedhTwZNnSOdG3WNc9nH5xBBcx1A';
+    
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    if (productCode) {
+      // Buscar produto específico
+      const { data, error } = await supabase
+        .from('estoque')
+        .select('*')
+        .eq('codigo_produto', productCode);
+      
+      if (error) throw error;
+      return data || [];
+    } else {
+      // Buscar resumo geral
+      const { data, error, count } = await supabase
+        .from('estoque')
+        .select('*', { count: 'exact' })
+        .limit(20);
+      
+      if (error) throw error;
+      return { data: data || [], count: count || 0 };
+    }
+  } catch (error) {
+    console.error('Erro Supabase:', error);
+    return null;
+  }
+}
+
+async function getLocalResponse(intent, message) {
   const { type, productCode } = intent;
   
   if (type === 'greeting') {
-    return '👋 Olá! Sou o Wiser IA Assistant. Posso ajudá-lo com informações sobre o inventário. Pergunte sobre saldos, produtos, ou peça uma análise!';
+    return '👋 Olá! Sou o Wiser IA Assistant. Como posso ajudá-lo com o inventário hoje?';
   }
   
   if (type === 'help') {
@@ -48,37 +80,46 @@ function getLocalResponse(intent, message) {
            `• "Qual o saldo do produto 000004?"\n` +
            `• "Me fale sobre o produto 123"\n` +
            `• "Qual o total do estoque?"\n` +
-           `• "Faça uma análise do inventário"\n` +
            `• "Produtos com estoque baixo"\n\n` +
-           `Digite sua pergunta e eu responderei com as informações disponíveis!`;
+           `Digite sua pergunta!`;
   }
   
+  // BUSCAR DADOS REAIS DO SUPABASE
   if (productCode && (type === 'productBalance' || type === 'productInfo')) {
-    const product = mockInventory.find(p => p.codigo === productCode);
-    if (product) {
-      return `📦 **Produto ${product.codigo}**\n\n` +
-             `**Descrição**: ${product.descricao}\n` +
-             `**Saldo disponível**: ${product.saldo} unidades\n` +
-             `**Lotes**: ${product.lotes}\n` +
-             `**Localização**: ${product.local}`;
+    const produtos = await getSupabaseData(productCode);
+    
+    if (produtos && produtos.length > 0) {
+      const totalSaldo = produtos.reduce((sum, p) => sum + (parseFloat(p.saldo_disponivel_produto) || 0), 0);
+      const produto = produtos[0];
+      
+      return `📦 **Produto ${produto.codigo_produto}**\n\n` +
+             `**Descrição**: ${produto.descricao_produto}\n` +
+             `**Saldo Total**: ${totalSaldo.toLocaleString('pt-BR')} unidades\n` +
+             `**Localizações**: ${produtos.length}\n` +
+             `**Armazém**: ${produto.armazem || 'N/A'}\n\n` +
+             `Dados REAIS do banco de dados.`;
     }
-    return `❌ Produto ${productCode} não encontrado no sistema.`;
+    return `❌ Produto ${productCode} não encontrado no banco de dados REAL.`;
   }
   
   if (type === 'totalInventory') {
-    const total = mockInventory.reduce((sum, p) => sum + p.saldo, 0);
-    return `📊 **Resumo do Inventário**\n\n` +
-           `**Total de produtos**: ${mockInventory.length}\n` +
-           `**Saldo total**: ${total.toLocaleString('pt-BR')} unidades\n` +
-           `**Localização**: BARUERI`;
+    const result = await getSupabaseData();
+    
+    if (result && result.data) {
+      const totalSaldo = result.data.reduce((sum, p) => sum + (parseFloat(p.saldo_disponivel_produto) || 0), 0);
+      
+      return `📊 **Resumo do Inventário REAL**\n\n` +
+             `**Total de registros**: ${result.count}\n` +
+             `**Saldo das amostras**: ${totalSaldo.toLocaleString('pt-BR')} unidades\n` +
+             `**Dados do banco**: Supabase\n\n` +
+             `Dados REAIS do banco de dados.`;
+    }
+    return '⚠️ Erro ao acessar banco de dados.';
   }
   
   return `📋 **Processando sua pergunta**\n\n` +
-         `Entendi que você quer saber sobre: "${message}"\n\n` +
-         `Para melhor precisão, tente perguntas como:\n` +
-         `• "Qual o saldo do produto 000004?"\n` +
-         `• "Qual o total do estoque?"\n` +
-         `• "Me fale sobre o produto 123"`;
+         `Buscando dados REAIS no banco...\n` +
+         `Pergunta: "${message}"`;
 }
 
 export default async function handler(req, res) {
@@ -111,19 +152,40 @@ export default async function handler(req, res) {
     let response = '';
     let aiModel = 'local';
     
-    // Try OpenAI first
+    // Try OpenAI first WITH REAL DATA
     const openaiKey = process.env.OPENAI_API_KEY;
     if (openaiKey && !openaiKey.includes('your_') && !openaiKey.includes('xxx')) {
       try {
-        console.log('Trying OpenAI...');
+        console.log('Trying OpenAI with REAL data...');
         const openai = new OpenAI({ apiKey: openaiKey });
+        
+        // BUSCAR DADOS REAIS DO SUPABASE PARA OPENAI
+        let inventoryData = null;
+        if (intent.productCode) {
+          inventoryData = await getSupabaseData(intent.productCode);
+        } else if (intent.type === 'totalInventory' || intent.type === 'inventorySummary') {
+          inventoryData = await getSupabaseData();
+        }
+        
+        // Preparar contexto com dados REAIS
+        let systemPrompt = "Você é o Wiser IA Assistant, especializado em gestão de inventário.\n\n";
+        
+        if (inventoryData) {
+          systemPrompt += "DADOS REAIS DO BANCO DE DADOS SUPABASE:\n";
+          systemPrompt += JSON.stringify(inventoryData, null, 2).slice(0, 2000) + "\n\n";
+          systemPrompt += "Use APENAS os dados fornecidos acima para responder. ";
+          systemPrompt += "Seja preciso com números e quantidades. ";
+          systemPrompt += "Se não houver dados, informe claramente.";
+        }
+        
+        systemPrompt += "\nResponda em português brasileiro de forma clara e objetiva.";
         
         const completion = await openai.chat.completions.create({
           model: "gpt-3.5-turbo",
           messages: [
             {
               role: "system",
-              content: "Você é um assistente especializado em gestão de inventário. Responda em português de forma clara e objetiva."
+              content: systemPrompt
             },
             {
               role: "user",
@@ -131,12 +193,12 @@ export default async function handler(req, res) {
             }
           ],
           max_tokens: 500,
-          temperature: 0.7
+          temperature: 0.3 // Mais determinístico para dados
         });
         
         response = completion.choices[0].message.content;
         aiModel = 'gpt-3.5-turbo';
-        console.log('OpenAI response generated');
+        console.log('OpenAI response with REAL data generated');
         
       } catch (error) {
         console.log('OpenAI failed:', error.message);
@@ -161,10 +223,10 @@ export default async function handler(req, res) {
       }
     }
     
-    // If no AI worked, use local response
+    // If no AI worked, use local response WITH REAL DATA FROM SUPABASE
     if (!response) {
-      console.log('Using local response');
-      response = getLocalResponse(intent, message);
+      console.log('Using local response with REAL data from Supabase');
+      response = await getLocalResponse(intent, message); // AWAIT PARA BUSCAR DADOS REAIS
       aiModel = 'local';
     }
     
