@@ -62,14 +62,17 @@ app.get('/', async (c) => {
                     Wiser IA Assistant
                 </h1>
                 <div class="flex gap-2">
+                    <a href="/chat-ai.html" class="p-3 rounded-lg bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all" title="Interface Inteligente">
+                        <i class="fas fa-brain text-xl"></i>
+                    </a>
+                    <a href="/chat-realtime.html" class="p-3 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-600 text-white shadow hover:shadow-lg transition-all" title="Tempo Real">
+                        <i class="fas fa-bolt text-xl"></i>
+                    </a>
                     <a href="/chat-complete.html" class="p-3 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow hover:shadow-lg transition-all" title="Versão Completa">
                         <i class="fas fa-rocket text-xl"></i>
                     </a>
                     <a href="/console-v2.html" class="p-3 rounded-lg bg-white shadow hover:shadow-lg transition-all" title="Console Debug">
                         <i class="fas fa-terminal text-purple-600 text-xl"></i>
-                    </a>
-                    <a href="/console.html" class="p-3 rounded-lg bg-white shadow hover:shadow-lg transition-all" title="Console Simples">
-                        <i class="fas fa-bug text-orange-600 text-xl"></i>
                     </a>
                 </div>
             </div>

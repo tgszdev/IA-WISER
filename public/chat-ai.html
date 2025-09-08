@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiser IA - Sistema Inteligente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .message-content {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .typing-indicator {
+            display: inline-flex;
+            gap: 4px;
+        }
+        
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background-color: #6b7280;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-white to-blue-50 min-h-screen">
+    <div class="container mx-auto px-4 py-6 max-w-7xl">
+        <!-- Header -->
+        <div class="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-indigo-100">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-3">
+                        <i class="fas fa-brain text-indigo-600"></i>
+                        Wiser IA Assistant
+                    </h1>
+                    <p class="text-gray-600 mt-2 flex items-center gap-2">
+                        <i class="fas fa-database text-green-500"></i>
+                        Sistema Inteligente com 28.179 registros em tempo real
+                    </p>
+                </div>
+                <div class="flex flex-col items-end gap-2">
+                    <div class="flex items-center gap-2">
+                        <div id="status-dot" class="w-3 h-3 bg-green-500 rounded-full pulse"></div>
+                        <span id="status-text" class="text-sm font-medium text-gray-700">Sistema Online</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="clearChat()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
+                            <i class="fas fa-broom mr-2"></i>
+                            Limpar
+                        </button>
+                        <button onclick="checkStatus()" class="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition">
+                            <i class="fas fa-heartbeat mr-2"></i>
+                            Status
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Main Chat Area -->
+            <div class="lg:col-span-3">
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+                    <!-- Messages Container -->
+                    <div id="messages" class="h-[600px] overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-gray-50 to-white">
+                        <!-- Welcome Message -->
+                        <div class="flex items-start space-x-3">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg">
+                                <i class="fas fa-robot text-white text-lg"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-5 shadow-sm border border-indigo-100">
+                                    <h3 class="font-bold text-indigo-900 mb-3 text-lg">
+                                        🎯 Sistema Inteligente Ativo!
+                                    </h3>
+                                    <p class="text-gray-700 mb-3">
+                                        Olá! Sou seu assistente inteligente com acesso completo ao inventário.
+                                        Posso analisar <strong>28.179 registros</strong> em tempo real.
+                                    </p>
+                                    <div class="grid grid-cols-2 gap-2 text-sm">
+                                        <div class="bg-white p-2 rounded-lg">
+                                            <i class="fas fa-box text-blue-500 mr-1"></i>
+                                            <strong>Produtos:</strong> "RM 139", "000004"
+                                        </div>
+                                        <div class="bg-white p-2 rounded-lg">
+                                            <i class="fas fa-map-marker text-green-500 mr-1"></i>
+                                            <strong>Locais:</strong> "034083501"
+                                        </div>
+                                        <div class="bg-white p-2 rounded-lg">
+                                            <i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>
+                                            <strong>Status:</strong> "vencidos", "avaria"
+                                        </div>
+                                        <div class="bg-white p-2 rounded-lg">
+                                            <i class="fas fa-chart-bar text-purple-500 mr-1"></i>
+                                            <strong>Análise:</strong> "resumo geral"
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Typing Indicator -->
+                    <div id="typing-indicator" class="hidden px-6 pb-4">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
+                                <i class="fas fa-robot text-white"></i>
+                            </div>
+                            <div class="bg-gray-100 rounded-xl p-4">
+                                <div class="typing-indicator">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Input Area -->
+                    <div class="border-t border-gray-200 p-4 bg-gray-50">
+                        <form id="chat-form" class="flex space-x-3">
+                            <input 
+                                type="text" 
+                                id="message-input"
+                                placeholder="Digite sua pergunta... Ex: 'Mostre todos os locais do produto RM 139'"
+                                class="flex-1 px-5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-800"
+                                autofocus
+                            >
+                            <button 
+                                type="submit"
+                                id="send-button"
+                                class="px-6 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-xl hover:from-indigo-600 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center space-x-2 font-medium"
+                            >
+                                <i class="fas fa-paper-plane"></i>
+                                <span>Enviar</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Side Panel -->
+            <div class="space-y-6">
+                <!-- Quick Actions -->
+                <div class="bg-white rounded-xl shadow-lg p-5 border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-rocket text-indigo-500"></i>
+                        Consultas Rápidas
+                    </h3>
+                    <div class="space-y-2">
+                        <button onclick="quickQuery('Mostre todos os locais do produto RM 139')" 
+                                class="w-full text-left px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-lg transition text-sm font-medium">
+                            <i class="fas fa-cube text-blue-600 mr-2"></i>
+                            Produto RM 139
+                        </button>
+                        <button onclick="quickQuery('O que tem no local 034083501?')" 
+                                class="w-full text-left px-4 py-3 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 rounded-lg transition text-sm font-medium">
+                            <i class="fas fa-location-dot text-green-600 mr-2"></i>
+                            Local 034083501
+                        </button>
+                        <button onclick="quickQuery('Quantos produtos estão vencidos?')" 
+                                class="w-full text-left px-4 py-3 bg-gradient-to-r from-yellow-50 to-orange-50 hover:from-yellow-100 hover:to-orange-100 rounded-lg transition text-sm font-medium">
+                            <i class="fas fa-clock text-yellow-600 mr-2"></i>
+                            Produtos Vencidos
+                        </button>
+                        <button onclick="quickQuery('Liste produtos com avaria')" 
+                                class="w-full text-left px-4 py-3 bg-gradient-to-r from-red-50 to-pink-50 hover:from-red-100 hover:to-pink-100 rounded-lg transition text-sm font-medium">
+                            <i class="fas fa-wrench text-red-600 mr-2"></i>
+                            Produtos Avaria
+                        </button>
+                        <button onclick="quickQuery('Resumo geral do inventário')" 
+                                class="w-full text-left px-4 py-3 bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 rounded-lg transition text-sm font-medium">
+                            <i class="fas fa-chart-pie text-purple-600 mr-2"></i>
+                            Resumo Geral
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="bg-white rounded-xl shadow-lg p-5 border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-chart-line text-green-500"></i>
+                        Estatísticas
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+                            <span class="text-sm font-medium text-gray-700">Total Registros</span>
+                            <span class="font-bold text-indigo-600">28.179</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg">
+                            <span class="text-sm font-medium text-gray-700">Produtos Únicos</span>
+                            <span class="font-bold text-green-600">~842</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg">
+                            <span class="text-sm font-medium text-gray-700">Vencidos</span>
+                            <span class="font-bold text-orange-600">3.996</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gradient-to-r from-red-50 to-pink-50 rounded-lg">
+                            <span class="text-sm font-medium text-gray-700">Avaria</span>
+                            <span class="font-bold text-red-600">4.957</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info -->
+                <div class="bg-gradient-to-br from-indigo-100 to-blue-100 rounded-xl p-5 border border-indigo-200">
+                    <h4 class="font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                        <i class="fas fa-info-circle"></i>
+                        Informação
+                    </h4>
+                    <p class="text-sm text-indigo-800">
+                        Sistema conectado diretamente ao banco Supabase. 
+                        Análise inteligente com detecção automática de intenções.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_ENDPOINT = '/api/openai-enhanced';
+        const STATUS_ENDPOINT = '/api/openai-enhanced/status';
+        
+        // State
+        let isTyping = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('chat-form').addEventListener('submit', handleSubmit);
+            setTimeout(checkStatus, 1000);
+        });
+
+        // Handle form submission
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (!message || isTyping) return;
+            
+            // Add user message
+            addMessage(message, 'user');
+            input.value = '';
+            
+            // Send to API
+            await sendMessage(message);
+        }
+
+        // Quick query
+        function quickQuery(text) {
+            document.getElementById('message-input').value = text;
+            document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+        }
+
+        // Send message to API
+        async function sendMessage(message) {
+            isTyping = true;
+            showTypingIndicator();
+            
+            try {
+                const startTime = Date.now();
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await response.json();
+                const responseTime = Date.now() - startTime;
+                
+                hideTypingIndicator();
+                
+                if (data.success) {
+                    // Adicionar resposta com metadados formatados
+                    const metadata = data.metadata || {};
+                    const metaText = `\n\n──────────────────────────────\n` +
+                        `📊 **Análise Completa**\n` +
+                        `• Tipo: ${metadata.intent || metadata.queryType || 'consulta'}\n` +
+                        `• Registros: ${metadata.recordsFound?.toLocaleString('pt-BR') || '0'}\n` +
+                        `• Tempo: ${responseTime}ms\n` +
+                        `• Fonte: Tempo Real`;
+                    
+                    addMessage(data.response + metaText, 'assistant');
+                } else {
+                    addMessage(`❌ Erro: ${data.error || 'Erro desconhecido'}`, 'error');
+                }
+                
+            } catch (error) {
+                hideTypingIndicator();
+                console.error('Erro:', error);
+                addMessage(`❌ Erro de conexão: ${error.message}`, 'error');
+            } finally {
+                isTyping = false;
+            }
+        }
+
+        // Add message to chat
+        function addMessage(content, type = 'user') {
+            const messagesContainer = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex items-start space-x-3';
+            
+            if (type === 'user') {
+                messageDiv.innerHTML = `
+                    <div class="flex-1 flex justify-end">
+                        <div class="bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-xl p-4 max-w-lg shadow-lg">
+                            <p class="font-medium">${escapeHtml(content)}</p>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center shadow-lg">
+                        <i class="fas fa-user text-gray-600"></i>
+                    </div>
+                `;
+            } else if (type === 'assistant') {
+                messageDiv.innerHTML = `
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg">
+                        <i class="fas fa-robot text-white text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-white rounded-xl p-5 shadow-lg border border-gray-100 max-w-3xl">
+                            <div class="message-content text-gray-800">${formatResponse(content)}</div>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'error') {
+                messageDiv.innerHTML = `
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center shadow-lg">
+                        <i class="fas fa-exclamation-triangle text-white"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-red-50 rounded-xl p-4 shadow-lg border border-red-200">
+                            <p class="text-red-700">${escapeHtml(content)}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Format response
+        function formatResponse(text) {
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-indigo-600">$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/^#\s+(.*)$/gm, '<h1 class="text-2xl font-bold mt-4 mb-2 text-gray-900">$1</h1>')
+                .replace(/^##\s+(.*)$/gm, '<h2 class="text-xl font-bold mt-3 mb-2 text-gray-800">$1</h2>')
+                .replace(/^###\s+(.*)$/gm, '<h3 class="text-lg font-bold mt-2 mb-1 text-gray-700">$1</h3>')
+                .replace(/^•\s+(.*)$/gm, '<li class="ml-4">• $1</li>')
+                .replace(/^(\d+)\.\s+(.*)$/gm, '<li class="ml-4">$1. $2</li>')
+                .replace(/──+/g, '<hr class="my-3 border-gray-300">')
+                .replace(/══+/g, '<hr class="my-3 border-gray-400 border-t-2">')
+                .replace(/\n/g, '<br>');
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Show typing indicator
+        function showTypingIndicator() {
+            document.getElementById('typing-indicator').classList.remove('hidden');
+            const messagesContainer = document.getElementById('messages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Hide typing indicator
+        function hideTypingIndicator() {
+            document.getElementById('typing-indicator').classList.add('hidden');
+        }
+
+        // Check status
+        async function checkStatus() {
+            try {
+                const response = await fetch(STATUS_ENDPOINT);
+                const data = await response.json();
+                
+                const statusDot = document.getElementById('status-dot');
+                const statusText = document.getElementById('status-text');
+                
+                if (data.status === 'online') {
+                    statusDot.className = 'w-3 h-3 bg-green-500 rounded-full pulse';
+                    statusText.textContent = 'Sistema Online';
+                } else {
+                    statusDot.className = 'w-3 h-3 bg-red-500 rounded-full';
+                    statusText.textContent = 'Sistema Offline';
+                }
+                
+            } catch (error) {
+                console.error('Erro ao verificar status:', error);
+                document.getElementById('status-dot').className = 'w-3 h-3 bg-yellow-500 rounded-full';
+                document.getElementById('status-text').textContent = 'Verificando...';
+            }
+        }
+
+        // Clear chat
+        function clearChat() {
+            const messagesContainer = document.getElementById('messages');
+            const firstMessage = messagesContainer.firstElementChild;
+            messagesContainer.innerHTML = '';
+            if (firstMessage) {
+                messagesContainer.appendChild(firstMessage);
+            }
+        }
+    </script>
+</body>
+</html>
