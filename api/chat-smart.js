@@ -17,9 +17,24 @@ const intentPatterns = {
 function analyzeIntent(message) {
   const lower = message.toLowerCase();
   
-  // Extract product code if present
-  const productMatch = message.match(/\b(\d{3,})\b/);
-  const productCode = productMatch ? productMatch[1].padStart(6, '0') : null;
+  // Extract product code - MELHORADO para suportar "RM 139" e outros formatos
+  let productCode = null;
+  
+  // Tentar diferentes padrões de código de produto
+  const patterns = [
+    /\b(RM\s*\d+)\b/i,           // RM 139, RM139
+    /\b([A-Z]+\s*\d+)\b/i,       // Qualquer letra + número
+    /\b(\d{6})\b/,                // 6 dígitos
+    /\b(\d{3,})\b/                // 3+ dígitos
+  ];
+  
+  for (const pattern of patterns) {
+    const match = message.match(pattern);
+    if (match) {
+      productCode = match[1].toUpperCase();
+      break;
+    }
+  }
   
   // Check patterns
   for (const [type, pattern] of Object.entries(intentPatterns)) {
@@ -44,11 +59,14 @@ async function getSupabaseData(productCode = null, getAllData = false) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     if (productCode) {
-      // Buscar produto específico - TODOS os registros desse produto
+      // Buscar produto específico - MELHORADO para diferentes formatos
+      console.log(`Buscando produto: ${productCode}`);
+      
+      // Tentar buscar com e sem espaços
       const { data, error, count } = await supabase
         .from('estoque')
         .select('*', { count: 'exact' })
-        .eq('codigo_produto', productCode);
+        .or(`codigo_produto.eq.${productCode},codigo_produto.eq.${productCode.replace(/\s+/g, '')},codigo_produto.ilike.%${productCode}%`);
       
       if (error) throw error;
       console.log(`Produto ${productCode}: ${count} registros encontrados`);
@@ -243,29 +261,33 @@ export default async function handler(req, res) {
         let systemPrompt = "Você é o Wiser IA Assistant, especializado em gestão de inventário.\n\n";
         
         if (inventoryData && inventoryData.stats) {
-          systemPrompt += "🚨 ATENÇÃO: VOCÊ TEM ACESSO A 100% DOS DADOS REAIS DO BANCO\n\n";
-          systemPrompt += "📊 ESTATÍSTICAS COMPLETAS (TODOS OS 28.179 REGISTROS):\n";
-          systemPrompt += `- Total REAL de registros no banco: ${inventoryData.stats.totalRegistros}\n`;
+          systemPrompt += "🚨 VOCÊ TEM ACESSO A 100% DOS DADOS REAIS DO BANCO\n\n";
+          systemPrompt += "📊 ESTATÍSTICAS COMPLETAS DA TABELA 'estoque':\n";
+          systemPrompt += `- Total de registros: ${inventoryData.stats.totalRegistros} (TODOS os registros)\n`;
           systemPrompt += `- Produtos únicos: ${inventoryData.stats.produtosUnicos}\n`;
-          systemPrompt += `- Saldo total REAL: ${inventoryData.stats.totalSaldo.toLocaleString('pt-BR')} unidades\n`;
+          systemPrompt += `- Saldo total: ${inventoryData.stats.totalSaldo.toLocaleString('pt-BR')} unidades\n`;
           systemPrompt += `- Produtos bloqueados: ${inventoryData.stats.produtosBloqueados}\n`;
           systemPrompt += `- Produtos com avaria: ${inventoryData.stats.produtosAvaria}\n`;
           systemPrompt += `- Produtos vencidos: ${inventoryData.stats.produtosVencidos}\n`;
           systemPrompt += `- Armazéns: ${inventoryData.stats.armazens.join(', ')}\n`;
           systemPrompt += `- Total de locais: ${inventoryData.stats.locais}\n\n`;
+          systemPrompt += "COLUNAS DA TABELA 'estoque':\n";
+          systemPrompt += "- id, codigo_produto, descricao_produto, lote_industria_produto\n";
+          systemPrompt += "- saldo_disponivel_produto, saldo_reservado_produto, saldo_bloqueado_produto\n";
+          systemPrompt += "- armazem, rua, local_produto\n\n";
           systemPrompt += "⚠️ NUNCA INVENTE DADOS! Use APENAS os números fornecidos acima.\n";
           systemPrompt += "⚠️ O total REAL é ${inventoryData.stats.totalRegistros} registros, NÃO zero!\n\n";
           
-          // Se for consulta específica, incluir dados detalhados
-          if (inventoryData.data && inventoryData.data.length > 0) {
-            systemPrompt += "DADOS DETALHADOS:\n";
-            // Limitar a 50 produtos para não exceder limite do OpenAI
-            const produtosParaEnviar = inventoryData.data.slice(0, 50);
-            systemPrompt += JSON.stringify(produtosParaEnviar, null, 2).slice(0, 4000) + "\n\n";
-            
-            if (inventoryData.data.length > 50) {
-              systemPrompt += `... e mais ${inventoryData.data.length - 50} produtos no banco.\n\n`;
-            }
+          // Se houver produto específico, incluir seus dados
+          if (inventoryData.specificProduct && inventoryData.specificProduct.data && inventoryData.specificProduct.data.length > 0) {
+            const prod = inventoryData.specificProduct.data;
+            const saldoTotal = prod.reduce((sum, item) => sum + (item.saldo_disponivel_produto || 0), 0);
+            systemPrompt += `PRODUTO ESPECÍFICO SOLICITADO:\n`;
+            systemPrompt += `- Código: ${prod[0].codigo_produto}\n`;
+            systemPrompt += `- Descrição: ${prod[0].descricao_produto}\n`;
+            systemPrompt += `- Total de registros: ${prod.length}\n`;
+            systemPrompt += `- Saldo total: ${saldoTotal} unidades\n`;
+            systemPrompt += `- Locais: ${prod.map(p => p.local_produto).join(', ')}\n\n`;
           }
           
           systemPrompt += "🔴 REGRAS CRÍTICAS:\n";
