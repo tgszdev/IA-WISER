@@ -61,14 +61,70 @@ export class SupabaseService {
 
   // Test connection
   async testConnection(): Promise<boolean> {
-    // Always return true for now to allow mock data usage
-    console.log('⚠️ Using demonstration mode with sample data');
-    return true;
+    if (!this.isConnected || !this.client) {
+      console.log('⚠️ Using demonstration mode with sample data');
+      return true; // Allow mock data
+    }
+
+    try {
+      // Try a simple query to test connection
+      const { data, error } = await this.client
+        .from('estoque')
+        .select('count', { count: 'exact', head: true });
+      
+      if (error) {
+        console.error('❌ Database connection test failed:', error);
+        this.useMockData = true;
+        return false;
+      }
+      
+      console.log('✅ Database connection successful');
+      this.useMockData = false;
+      return true;
+    } catch (error) {
+      console.error('❌ Database connection error:', error);
+      this.useMockData = true;
+      return false;
+    }
   }
 
   // Get all inventory items (no limit)
   async getAllInventory(): Promise<QueryResult> {
-    // Use mock data for demonstration
+    // Try real database first
+    if (this.isConnected && this.client && !this.useMockData) {
+      try {
+        const { data, error, count } = await this.client
+          .from('estoque')
+          .select('*', { count: 'exact' })
+          .order('codigo_produto', { ascending: true });
+        
+        if (error) {
+          console.error('❌ Database query error:', error);
+          // Fall back to mock data
+          const mockData = getMockData();
+          return {
+            type: 'success',
+            data: mockData,
+            count: mockData.length,
+            message: `Loaded ${mockData.length} sample items (database error, using fallback)`
+          };
+        }
+        
+        if (data && data.length > 0) {
+          console.log(`✅ Loaded ${data.length} items from database`);
+          return {
+            type: 'success',
+            data: data,
+            count: count || data.length,
+            message: `Loaded ${data.length} items from inventory database`
+          };
+        }
+      } catch (error) {
+        console.error('❌ Query execution error:', error);
+      }
+    }
+    
+    // Use mock data as fallback
     const mockData = getMockData();
     return {
       type: 'success',
@@ -80,7 +136,38 @@ export class SupabaseService {
 
   // Search product by code
   async searchByProductCode(productCode: string): Promise<QueryResult> {
-    // Use mock data for demonstration
+    // Try real database first
+    if (this.isConnected && this.client && !this.useMockData) {
+      try {
+        const { data, error, count } = await this.client
+          .from('estoque')
+          .select('*', { count: 'exact' })
+          .eq('codigo_produto', productCode)
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('❌ Database search error:', error);
+        } else if (data && data.length > 0) {
+          console.log(`✅ Found ${data.length} records for product ${productCode}`);
+          return {
+            type: 'product_found',
+            data: data,
+            count: count || data.length,
+            message: `Found ${data.length} records for product ${productCode}`
+          };
+        } else {
+          return {
+            type: 'not_found',
+            message: `Product ${productCode} not found in database`,
+            data: []
+          };
+        }
+      } catch (error) {
+        console.error('❌ Search execution error:', error);
+      }
+    }
+    
+    // Use mock data as fallback
     const mockData = searchMockProduct(productCode);
     
     if (!mockData || mockData.length === 0) {

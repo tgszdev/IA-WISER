@@ -67,6 +67,8 @@ REGRAS:
 3. Forneça respostas concisas mas completas
 4. Sugira próximas ações quando relevante
 5. Use português brasileiro
+6. SEMPRE use os dados fornecidos do banco para responder
+7. Se não houver dados, informe claramente que não há informações disponíveis
 
 FORMATO:
 - Use **negrito** para destacar
@@ -89,11 +91,55 @@ FORMATO:
         });
       }
 
-      // Adiciona dados de inventário se disponível
+      // Formata dados de inventário de forma mais estruturada
       if (inventoryData) {
+        let inventoryContext = 'DADOS DO INVENTÁRIO ATUAL:\n\n';
+        
+        // Adiciona resumo se disponível
+        if (inventoryData.summary) {
+          inventoryContext += `RESUMO GERAL:\n`;
+          inventoryContext += `- Total de itens: ${inventoryData.totalItems || 0}\n`;
+          inventoryContext += `- Produtos únicos: ${inventoryData.summary.uniqueProducts || 0}\n`;
+          inventoryContext += `- Valor total: R$ ${inventoryData.summary.totalValue || 0}\n\n`;
+        }
+        
+        // Adiciona dados dos produtos
+        if (inventoryData.queryResults && inventoryData.queryResults.length > 0) {
+          inventoryContext += `PRODUTOS ENCONTRADOS:\n`;
+          inventoryData.queryResults.forEach((item: any, index: number) => {
+            if (index < 10) { // Limita a 10 produtos para não sobrecarregar
+              inventoryContext += `\nProduto ${index + 1}:\n`;
+              inventoryContext += `- Código: ${item.codigo_produto || 'N/A'}\n`;
+              inventoryContext += `- Descrição: ${item.descricao_produto || 'N/A'}\n`;
+              inventoryContext += `- Saldo Disponível: ${item.saldo_disponivel_produto || 0}\n`;
+              inventoryContext += `- Saldo Bloqueado: ${item.saldo_bloqueado_produto || 'Nenhum'}\n`;
+              inventoryContext += `- Local: ${item.local_produto || 'N/A'}\n`;
+              inventoryContext += `- Armazém: ${item.armazem || 'N/A'}\n`;
+              if (item.lote_industria_produto) {
+                inventoryContext += `- Lote: ${item.lote_industria_produto}\n`;
+              }
+            }
+          });
+          
+          if (inventoryData.queryResults.length > 10) {
+            inventoryContext += `\n... e mais ${inventoryData.queryResults.length - 10} produtos\n`;
+          }
+        } else {
+          inventoryContext += 'Nenhum produto encontrado no banco de dados.\n';
+        }
+        
+        // Adiciona informações sobre a intenção detectada
+        if (inventoryData.intent) {
+          inventoryContext += `\nINTENÇÃO DETECTADA: ${inventoryData.intent.type}\n`;
+          inventoryContext += `CONFIANÇA: ${Math.round((inventoryData.intent.confidence || 0) * 100)}%\n`;
+          if (inventoryData.intent.entities?.productCode) {
+            inventoryContext += `PRODUTO PESQUISADO: ${inventoryData.intent.entities.productCode}\n`;
+          }
+        }
+        
         messages.push({
           role: 'system',
-          content: `Dados do inventário disponíveis: ${JSON.stringify(inventoryData).slice(0, 2000)}`
+          content: inventoryContext
         });
       }
 
@@ -105,7 +151,7 @@ FORMATO:
         model: this.model,
         messages: messages,
         temperature: 0.3, // Mais determinístico para dados
-        max_tokens: 500,
+        max_tokens: 800, // Aumentado para respostas mais completas
         presence_penalty: 0.1,
         frequency_penalty: 0.1
       });
