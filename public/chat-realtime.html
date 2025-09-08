@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiser IA - Consulta em Tempo Real</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .message-content {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .typing-dots {
+            display: inline-flex;
+            gap: 4px;
+        }
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background-color: #6b7280;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+        .shimmer {
+            background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+            100% {
+                background-position: -200% 0;
+            }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-white to-indigo-50 min-h-screen">
+    <div class="container mx-auto px-4 py-6 max-w-6xl">
+        <!-- Header -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-3">
+                        <i class="fas fa-database text-blue-600"></i>
+                        Wiser IA - Tempo Real
+                    </h1>
+                    <p class="text-gray-600 mt-2">
+                        <i class="fas fa-bolt text-yellow-500"></i>
+                        Consultas diretas ao banco de dados - 28.179 registros
+                    </p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="checkStatus()" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                        <i class="fas fa-sync-alt mr-2"></i>
+                        Status
+                    </button>
+                    <button onclick="clearChat()" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition">
+                        <i class="fas fa-broom mr-2"></i>
+                        Limpar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div id="status-bar" class="bg-white rounded-lg shadow p-4 mb-6 hidden">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div id="status-indicator" class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <span id="status-text" class="text-sm font-medium text-gray-700">Sistema Online</span>
+                </div>
+                <div id="status-details" class="text-sm text-gray-600"></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Chat Area -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <!-- Messages Container -->
+                    <div id="messages" class="h-[500px] overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-gray-50 to-white">
+                        <!-- Welcome Message -->
+                        <div class="flex items-start space-x-3 fade-in">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                                <i class="fas fa-robot text-white"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 shadow-sm">
+                                    <p class="text-gray-700 font-medium mb-3">
+                                        🚀 Sistema de Consulta em Tempo Real Ativo!
+                                    </p>
+                                    <p class="text-gray-600 text-sm mb-3">
+                                        Acesso direto ao banco de dados com 28.179 registros. Pergunte qualquer coisa sobre o inventário:
+                                    </p>
+                                    <div class="space-y-1 text-sm text-gray-600">
+                                        <div>📦 <strong>"Produto RM 139"</strong> - Ver todos os locais</div>
+                                        <div>📍 <strong>"Local 034083501"</strong> - Produtos armazenados</div>
+                                        <div>⚠️ <strong>"Produtos vencidos"</strong> - Lista completa</div>
+                                        <div>🔧 <strong>"Produtos com avaria"</strong> - Análise detalhada</div>
+                                        <div>📊 <strong>"Resumo do inventário"</strong> - Estatísticas gerais</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Typing Indicator -->
+                    <div id="typing-indicator" class="hidden px-6 pb-3">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                                <i class="fas fa-robot text-white"></i>
+                            </div>
+                            <div class="bg-gray-100 rounded-lg p-4">
+                                <div class="typing-dots">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Input Area -->
+                    <div class="border-t border-gray-200 p-4 bg-gray-50">
+                        <form id="chat-form" class="flex space-x-3">
+                            <input 
+                                type="text" 
+                                id="message-input"
+                                placeholder="Digite sua pergunta sobre o inventário..."
+                                class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                autofocus
+                            >
+                            <button 
+                                type="submit"
+                                id="send-button"
+                                class="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl flex items-center space-x-2"
+                            >
+                                <i class="fas fa-paper-plane"></i>
+                                <span>Enviar</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions & Stats -->
+            <div class="space-y-6">
+                <!-- Quick Queries -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-bolt text-yellow-500"></i>
+                        Consultas Rápidas
+                    </h3>
+                    <div class="space-y-2">
+                        <button onclick="sendQuickQuery('Mostre todos os locais do produto RM 139')" 
+                                class="w-full text-left px-4 py-3 bg-gray-50 hover:bg-blue-50 rounded-lg transition text-sm">
+                            <i class="fas fa-box text-blue-500 mr-2"></i>
+                            Produto RM 139 - Todos locais
+                        </button>
+                        <button onclick="sendQuickQuery('Quais produtos estão no local 034083501?')" 
+                                class="w-full text-left px-4 py-3 bg-gray-50 hover:bg-blue-50 rounded-lg transition text-sm">
+                            <i class="fas fa-map-marker-alt text-green-500 mr-2"></i>
+                            Local 034083501
+                        </button>
+                        <button onclick="sendQuickQuery('Liste todos os produtos vencidos')" 
+                                class="w-full text-left px-4 py-3 bg-gray-50 hover:bg-blue-50 rounded-lg transition text-sm">
+                            <i class="fas fa-exclamation-triangle text-yellow-500 mr-2"></i>
+                            Produtos Vencidos
+                        </button>
+                        <button onclick="sendQuickQuery('Produtos com avaria')" 
+                                class="w-full text-left px-4 py-3 bg-gray-50 hover:bg-blue-50 rounded-lg transition text-sm">
+                            <i class="fas fa-tools text-orange-500 mr-2"></i>
+                            Produtos com Avaria
+                        </button>
+                        <button onclick="sendQuickQuery('Resumo geral do inventário')" 
+                                class="w-full text-left px-4 py-3 bg-gray-50 hover:bg-blue-50 rounded-lg transition text-sm">
+                            <i class="fas fa-chart-pie text-purple-500 mr-2"></i>
+                            Resumo do Inventário
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Statistics -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-chart-bar text-indigo-500"></i>
+                        Estatísticas
+                    </h3>
+                    <div id="stats-container" class="space-y-3">
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span class="text-sm text-gray-600">Total de Registros</span>
+                            <span class="font-bold text-gray-800">28.179</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span class="text-sm text-gray-600">Consultas Realizadas</span>
+                            <span id="query-count" class="font-bold text-gray-800">0</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span class="text-sm text-gray-600">Tempo Médio</span>
+                            <span id="avg-time" class="font-bold text-gray-800">-</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span class="text-sm text-gray-600">Status</span>
+                            <span id="connection-status" class="font-bold text-green-600">
+                                <i class="fas fa-circle text-xs mr-1"></i>
+                                Online
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Panel -->
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                    <h3 class="text-sm font-bold text-blue-800 mb-2 flex items-center gap-2">
+                        <i class="fas fa-info-circle"></i>
+                        Informações
+                    </h3>
+                    <p class="text-xs text-blue-700">
+                        Sistema conectado diretamente ao banco de dados Supabase. 
+                        Todas as consultas são executadas em tempo real, sem cache.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_ENDPOINT = '/api/openai-realtime';
+        const STATUS_ENDPOINT = '/api/openai-realtime/status';
+        
+        // State
+        let queryCount = 0;
+        let totalTime = 0;
+        let isTyping = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkStatus();
+            document.getElementById('chat-form').addEventListener('submit', handleSubmit);
+        });
+
+        // Handle form submission
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (!message || isTyping) return;
+            
+            // Add user message
+            addMessage(message, 'user');
+            input.value = '';
+            
+            // Send to API
+            await sendMessage(message);
+        }
+
+        // Send message to API
+        async function sendMessage(message) {
+            isTyping = true;
+            showTypingIndicator();
+            const startTime = Date.now();
+            
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await response.json();
+                const responseTime = Date.now() - startTime;
+                
+                hideTypingIndicator();
+                
+                if (data.success) {
+                    addMessage(data.response, 'assistant', data.metadata);
+                    updateStats(responseTime);
+                } else {
+                    addMessage(`❌ Erro: ${data.error || 'Erro desconhecido'}`, 'error');
+                }
+                
+            } catch (error) {
+                hideTypingIndicator();
+                console.error('Erro ao enviar mensagem:', error);
+                addMessage(`❌ Erro de conexão: ${error.message}`, 'error');
+            } finally {
+                isTyping = false;
+            }
+        }
+
+        // Quick query
+        function sendQuickQuery(query) {
+            document.getElementById('message-input').value = query;
+            document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+        }
+
+        // Add message to chat
+        function addMessage(content, type = 'user', metadata = null) {
+            const messagesContainer = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex items-start space-x-3 fade-in';
+            
+            if (type === 'user') {
+                messageDiv.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                        <i class="fas fa-user text-white"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 shadow-sm">
+                            <p class="text-gray-700 message-content">${escapeHtml(content)}</p>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'assistant') {
+                let metaInfo = '';
+                if (metadata) {
+                    metaInfo = `
+                        <div class="mt-2 pt-2 border-t border-blue-100 text-xs text-gray-500">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            ${metadata.recordsFound} registros • ${metadata.responseTime}ms • ${metadata.queryType}
+                        </div>
+                    `;
+                }
+                
+                messageDiv.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                        <i class="fas fa-robot text-white"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 shadow-sm">
+                            <div class="text-gray-700 message-content">${formatResponse(content)}</div>
+                            ${metaInfo}
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'error') {
+                messageDiv.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center shadow-lg">
+                        <i class="fas fa-exclamation-triangle text-white"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-4 shadow-sm border border-red-200">
+                            <p class="text-red-700 message-content">${escapeHtml(content)}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Format response with proper HTML
+        function formatResponse(text) {
+            // Convert markdown-like formatting to HTML
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/__(.*?)__/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/_(.*?)_/g, '<em>$1</em>')
+                .replace(/^#{1,6}\s+(.*)$/gm, (match, p1, offset, string) => {
+                    const level = match.indexOf(' ');
+                    return `<h${level} class="font-bold text-lg mt-2 mb-1">${p1}</h${level}>`;
+                })
+                .replace(/•/g, '&bull;')
+                .replace(/──+/g, '<hr class="my-2 border-gray-300">')
+                .replace(/==+/g, '<hr class="my-2 border-gray-300">')
+                .replace(/\n/g, '<br>');
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Show typing indicator
+        function showTypingIndicator() {
+            document.getElementById('typing-indicator').classList.remove('hidden');
+            const messagesContainer = document.getElementById('messages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Hide typing indicator
+        function hideTypingIndicator() {
+            document.getElementById('typing-indicator').classList.add('hidden');
+        }
+
+        // Update statistics
+        function updateStats(responseTime) {
+            queryCount++;
+            totalTime += responseTime;
+            
+            document.getElementById('query-count').textContent = queryCount;
+            document.getElementById('avg-time').textContent = 
+                queryCount > 0 ? `${Math.round(totalTime / queryCount)}ms` : '-';
+        }
+
+        // Check system status
+        async function checkStatus() {
+            const statusBar = document.getElementById('status-bar');
+            const statusIndicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const statusDetails = document.getElementById('status-details');
+            const connectionStatus = document.getElementById('connection-status');
+            
+            try {
+                const response = await fetch(STATUS_ENDPOINT);
+                const data = await response.json();
+                
+                if (data.status === 'online') {
+                    statusBar.classList.remove('hidden');
+                    statusIndicator.className = 'w-3 h-3 bg-green-500 rounded-full animate-pulse';
+                    statusText.textContent = 'Sistema Online';
+                    statusDetails.textContent = data.message;
+                    connectionStatus.innerHTML = '<i class="fas fa-circle text-xs mr-1 text-green-500"></i>Online';
+                    
+                    // Show success message
+                    addMessage(
+                        `✅ Sistema conectado com sucesso!\n` +
+                        `📊 Total de registros disponíveis: ${data.totalRecords?.toLocaleString('pt-BR')}\n` +
+                        `⚡ Todas as consultas são executadas em tempo real diretamente no banco de dados.`,
+                        'assistant'
+                    );
+                } else {
+                    statusIndicator.className = 'w-3 h-3 bg-red-500 rounded-full';
+                    statusText.textContent = 'Sistema Offline';
+                    statusDetails.textContent = data.error || 'Erro de conexão';
+                    connectionStatus.innerHTML = '<i class="fas fa-circle text-xs mr-1 text-red-500"></i>Offline';
+                }
+                
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    statusBar.classList.add('hidden');
+                }, 5000);
+                
+            } catch (error) {
+                console.error('Erro ao verificar status:', error);
+                statusIndicator.className = 'w-3 h-3 bg-red-500 rounded-full';
+                statusText.textContent = 'Erro de Conexão';
+                connectionStatus.innerHTML = '<i class="fas fa-circle text-xs mr-1 text-red-500"></i>Erro';
+            }
+        }
+
+        // Clear chat
+        function clearChat() {
+            const messagesContainer = document.getElementById('messages');
+            // Keep only the welcome message
+            const welcomeMessage = messagesContainer.firstElementChild;
+            messagesContainer.innerHTML = '';
+            if (welcomeMessage) {
+                messagesContainer.appendChild(welcomeMessage);
+            }
+            
+            // Reset stats
+            queryCount = 0;
+            totalTime = 0;
+            document.getElementById('query-count').textContent = '0';
+            document.getElementById('avg-time').textContent = '-';
+        }
+    </script>
+</body>
+</html>

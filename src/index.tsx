@@ -7,6 +7,8 @@ import openAIRoutes from './routes/chat-openai'
 import inventoryRoutes from './routes/inventory'
 import chatSmartRoutes from './routes/chat-smart'
 import chatCompleteRoutes from './routes/chat-complete'
+import openAIRealtimeRoutes from './routes/openai-realtime'
+import openAIEnhancedRoutes from './routes/openai-enhanced'
 
 // Types
 type Bindings = {
@@ -14,6 +16,7 @@ type Bindings = {
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   GOOGLE_API_KEY?: string;
+  OPENAI_API_KEY?: string;
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -32,6 +35,8 @@ app.route('/', openAIRoutes)
 app.route('/', inventoryRoutes)
 app.route('/', chatSmartRoutes)
 app.route('/', chatCompleteRoutes)
+app.route('/', openAIRealtimeRoutes)
+app.route('/', openAIEnhancedRoutes)
 
 // Note: Static files are served directly by Cloudflare Pages
 // No need for serveStatic in production

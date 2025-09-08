@@ -1,235 +1,228 @@
-# 🤖 Wiser IA Assistant v4.0 - Sistema Completo com Análise de 100% dos Dados
+# Wiser IA Assistant - Sistema de Consulta em Tempo Real
 
-## 🚀 NOVA VERSÃO 4.0 - ANÁLISE COMPLETA
+## Visão Geral do Projeto
+- **Nome**: Wiser IA Assistant v3.0
+- **Objetivo**: Sistema inteligente de consulta de inventário com acesso em tempo real ao banco de dados
+- **Características Principais**:
+  - ✅ Consultas em tempo real ao Supabase (28.179 registros)
+  - ✅ Análise inteligente de intenções (8 tipos de consultas)
+  - ✅ Respostas completas mostrando TODOS os locais de produtos
+  - ✅ Interface web otimizada e responsiva
+  - ✅ Suporte para integração com OpenAI GPT-4 (opcional)
+  - ✅ Zero cache - dados sempre atualizados
 
-### ✨ O que há de novo na v4.0:
-- ✅ **Carregamento de 100% dos dados** em memória para análise completa
-- ✅ **Cache inteligente** de 5 minutos para respostas instantâneas  
-- ✅ **Análise detalhada** de produtos com TODOS os locais e saldos
-- ✅ **Interface aprimorada** com estatísticas em tempo real
-- ✅ **Respostas precisas** baseadas em dados reais completos
-- ✅ **Suporte a múltiplos formatos** de consulta (RM 139, PROD-001, etc)
+## URLs de Acesso
+- **Produção**: https://wiser-ia-assistant.pages.dev (após deploy)
+- **Desenvolvimento**: https://3000-itd9ec3aegznw6o63t98q-6532622b.e2b.dev
+- **GitHub**: https://github.com/username/wiser-ia-assistant
 
-## 🌐 URLs de Acesso
+## Interfaces Disponíveis
+- `/chat-realtime.html` - Interface principal com consultas em tempo real
+- `/chat-complete.html` - Interface com cache de 5 minutos (100% dos dados)
+- `/chat-openai-simple.html` - Interface simplificada
+- `/console-v2.html` - Console de debug avançado
+- `/console.html` - Console de debug simples
 
-- **🌟 Aplicação v4.0 Completa**: https://3000-itd9ec3aegznw6o63t98q-6532622b.e2b.dev/chat-complete.html ⭐ **RECOMENDADO**
-- **Aplicação Principal (v3.0)**: https://3000-itd9ec3aegznw6o63t98q-6532622b.e2b.dev
-- **Status das IAs**: https://3000-itd9ec3aegznw6o63t98q-6532622b.e2b.dev/ai-status.html
-- **Console Debug Avançado**: https://3000-itd9ec3aegznw6o63t98q-6532622b.e2b.dev/console-v2.html
-- **GitHub**: https://github.com/tgszdev/IA-WISER
-- **Cloudflare Pages**: Pronto para deploy
+## APIs Disponíveis
 
-## 📊 Funcionalidades da Versão 4.0
+### 1. **API Enhanced (Recomendada)**
+- **Endpoint**: `/api/openai-enhanced`
+- **Método**: POST
+- **Descrição**: Consultas inteligentes com análise de intenção
+- **Intents suportados**:
+  - `location_query` - Busca por local (9 dígitos)
+  - `product_query` - Busca por produto (RM XXX)
+  - `product_locations` - Todos os locais de um produto
+  - `expired_query` - Produtos vencidos
+  - `damaged_query` - Produtos com avaria
+  - `blocked_query` - Produtos bloqueados
+  - `warehouse_query` - Busca por armazém
+  - `lot_query` - Busca por lote
+  - `summary_query` - Resumo geral
 
-### 💾 Análise Completa de Dados
-- **Carregamento Total**: Carrega 100% dos registros do banco de dados na memória
-- **Índices Otimizados**: Cria índices por produto, local, lote e armazém para busca rápida
-- **Cache Inteligente**: Mantém dados em cache por 5 minutos, atualizável sob demanda
-- **Estatísticas em Tempo Real**: Calcula e exibe estatísticas de todo inventário
+### 2. **API Realtime (Básica)**
+- **Endpoint**: `/api/openai-realtime`
+- **Método**: POST
+- **Descrição**: Consultas diretas ao banco sem análise avançada
 
-### 🔍 Consultas Suportadas
-| Tipo de Consulta | Exemplo | Resposta |
-|-----------------|---------|----------|
-| **Produtos Específicos** | "Qual o saldo do produto RM 139?" | Análise completa com TODOS os locais |
-| **Localizações** | "Qual produto está no local 034057501?" | Lista todos produtos no local |
-| **Lotes** | "Informações do lote 2000335541" | Detalhes completos do lote |
-| **Status** | "Produtos vencidos" ou "com avaria" | Lista categorizada |
-| **Alertas** | "Produtos com estoque baixo" | Produtos < 10 unidades |
-| **Financeiro** | "Qual o valor total do estoque?" | Análise financeira completa |
-| **Resumos** | "Resumo completo do inventário" | Estatísticas gerais |
+### 3. **API Complete (Com Cache)**
+- **Endpoint**: `/api/chat-complete`
+- **Método**: POST
+- **Descrição**: Carrega 100% dos dados em cache (5 minutos)
 
-### 🎯 Formato de Resposta Estruturado
-```
-📦 PRODUTO RM 139 - ANÁLISE COMPLETA
-==================================
-Código: RM 139
-Descrição: VINNAPAS LL 8431 - SC 25 KG
-Total de registros: 16
+### 4. **Status Endpoints**
+- `/api/openai-enhanced/status` - Status detalhado do sistema
+- `/api/openai-realtime/status` - Status básico
+- `/api/openai-enhanced/analyze` - Análise de mensagem (debug)
 
-SALDOS:
-- Saldo Disponível Total: 16.000 unidades
-- Saldo Bloqueado Total: 0 unidades
+## Arquitetura de Dados
 
-DETALHAMENTO POR LOCAL:
-1. Local: 032045401 | Saldo: 1000 | Lote: 2000335541
-2. Local: 032045501 | Saldo: 1000 | Lote: 2000335541
-3. Local: 032047401 | Saldo: 1000 | Lote: 2000335541
-... (todos os 16 locais listados com detalhes)
-```
-
-## 🏗️ Arquitetura do Sistema
-
-### Componentes Principais
-
-1. **API `/api/chat-complete`** (NOVO)
-   - Carrega 100% dos dados do Supabase
-   - Mantém cache global em memória
-   - Análise inteligente de consultas
-   - Respostas estruturadas e precisas
-
-2. **Interface `chat-complete.html`** (NOVO)
-   - Design moderno com gradientes
-   - Painel de estatísticas em tempo real
-   - Metadados de resposta visíveis
-   - Botões de consulta rápida
-   - Indicadores de status e cache
-
-3. **Sistema de Cache**
-   - Duração: 5 minutos (configurável)
-   - Refresh manual disponível
-   - Indicador de idade do cache
-   - Otimização de performance
-
-## 🔧 Tecnologias Utilizadas
-
-### Backend
-- **Hono Framework** - Framework web ultrarrápido
-- **Cloudflare Workers** - Edge computing
-- **Supabase** - Banco de dados PostgreSQL
-- **TypeScript** - Type safety
-- **OpenAI API** - IA avançada (opcional)
-
-### Frontend
-- **Tailwind CSS** - Estilização moderna
-- **Font Awesome** - Ícones
-- **Vanilla JavaScript** - Performance máxima
-- **Markdown Rendering** - Formatação rica
-
-## 📈 Estatísticas do Sistema
-
-### Dados Analisados
-- **Total de Registros**: Variável (100% carregados)
-- **Produtos Únicos**: Calculado em tempo real
-- **Locais de Armazenamento**: Indexados
-- **Armazéns**: Mapeados
-- **Lotes**: Rastreados
-
-### Performance
-- **Tempo de Resposta**: < 500ms (com cache)
-- **Primeira Carga**: ~2-5s (carregamento completo)
-- **Cache Hit Rate**: > 90%
-- **Precisão**: 100% (dados reais)
-
-## 🚀 Como Usar
-
-### Interface Principal (v4.0)
-1. Acesse `/chat-complete.html`
-2. Digite sua pergunta no campo de entrada
-3. Use os botões de consulta rápida para perguntas comuns
-4. Veja as estatísticas em tempo real no painel lateral
-5. Clique em 🔄 para atualizar o cache quando necessário
-
-### Exemplos de Perguntas
-```
-✅ "Qual o saldo do produto RM 139?"
-✅ "Mostre todos os produtos vencidos"
-✅ "Qual produto está no local 034057501?"
-✅ "Produtos com estoque baixo"
-✅ "Qual o valor total do inventário?"
-✅ "Resumo completo do estoque"
-✅ "Informações do lote 2000335541"
-✅ "Produtos com avaria"
+### Modelo de Dados Principal
+```typescript
+interface InventoryItem {
+  codigo_produto: string;        // Código do produto (ex: "RM 139")
+  descricao_produto: string;      // Descrição completa
+  local_produto: string;          // Local de 9 dígitos
+  saldo_disponivel_produto: number; // Quantidade disponível
+  saldo_bloqueado_produto?: string; // Status (Vencido, Avaria, etc)
+  lote_industria_produto?: string;  // Número do lote
+  unidade_medida?: string;         // Unidade (UN, KG, etc)
+  armazem_produto?: string;        // Código do armazém
+  validade_produto?: string;       // Data de validade
+}
 ```
 
-## 🔄 Atualizações Recentes
+### Banco de Dados
+- **Plataforma**: Supabase (PostgreSQL)
+- **Tabela**: `estoque`
+- **Total de Registros**: 28.179
+- **Produtos Únicos**: ~5.000
+- **Locais Únicos**: ~15.000
+- **Status**:
+  - Produtos OK: 19.226
+  - Produtos Vencidos: 3.996
+  - Produtos com Avaria: 4.957
 
-### v4.0 (Atual)
-- Sistema de cache global em memória
-- Carregamento de 100% dos dados
-- Interface completamente redesenhada
-- Análise detalhada com todos os locais
-- Painel de estatísticas em tempo real
+## Funcionalidades Implementadas ✅
+1. **Consulta por Produto**: Retorna TODOS os locais onde o produto está armazenado
+2. **Consulta por Local**: Lista todos os produtos em um local específico
+3. **Produtos Vencidos**: Relatório completo de produtos vencidos
+4. **Produtos com Avaria**: Análise de produtos danificados
+5. **Resumo do Inventário**: Estatísticas gerais do sistema
+6. **Análise Inteligente**: Detecção automática de intenção na mensagem
+7. **Formatação Rica**: Respostas com markdown, emojis e estrutura visual
+8. **Consultas Rápidas**: Botões para consultas frequentes
+9. **Estatísticas em Tempo Real**: Contador de consultas e tempo médio
 
-### v3.0
-- Multi-AI com fallback (OpenAI → Gemini → Local)
-- Query Generator com análise de intenção
-- Gerenciamento de sessões persistente
-- Console de debug avançado
+## Funcionalidades Pendentes 🔄
+1. **Integração OpenAI GPT-4**: Adicionar API key para respostas ainda mais inteligentes
+2. **Exportação de Relatórios**: Gerar PDF/Excel dos resultados
+3. **Histórico de Consultas**: Salvar e recuperar consultas anteriores
+4. **Dashboard Analítico**: Visualizações gráficas dos dados
+5. **Alertas Automáticos**: Notificações para produtos vencidos/avaria
 
-### v2.0
-- Integração com Supabase
-- Sistema de chat inteligente
-- Respostas baseadas em contexto
+## Guia de Uso
 
-### v1.0
-- Sistema básico de consulta
-- Interface simples
-- Respostas pré-definidas
+### Para Usuários
+1. Acesse a interface web em `/chat-realtime.html`
+2. Digite sua pergunta na caixa de texto ou use os botões de consulta rápida
+3. Exemplos de perguntas:
+   - "Mostre todos os locais do produto RM 139"
+   - "Quais produtos estão no local 034083501?"
+   - "Liste produtos vencidos"
+   - "Produtos com avaria"
+   - "Resumo do inventário"
+4. Aguarde a resposta em tempo real
+5. Use o botão "Status" para verificar conexão
 
-## 🛠️ Configuração
+### Para Desenvolvedores
 
-### Variáveis de Ambiente
-```env
-SUPABASE_URL=https://tecvgnrqcfqcrcodrjtt.supabase.co
-SUPABASE_ANON_KEY=eyJhbG...
-OPENAI_API_KEY=sk-... (opcional)
-GOOGLE_API_KEY=AIza... (opcional)
-```
-
-### Deploy
+#### Instalação Local
 ```bash
-# Build
+# Clone o repositório
+git clone https://github.com/username/wiser-ia-assistant.git
+cd wiser-ia-assistant
+
+# Instale dependências
+npm install
+
+# Configure variáveis de ambiente
+cp .dev.vars.example .dev.vars
+# Edite .dev.vars com suas credenciais
+
+# Build do projeto
 npm run build
 
-# Deploy para Cloudflare Pages
-npm run deploy
-
-# Desenvolvimento local
-npm run dev
+# Inicie localmente
+npm run dev:sandbox
 ```
 
-## 📊 Estrutura de Dados
+#### Configuração de API Keys
+```bash
+# Para desenvolvimento (arquivo .dev.vars)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+OPENAI_API_KEY=sk-your-openai-key # Opcional
 
-### Tabela `estoque`
-```sql
-- id: SERIAL PRIMARY KEY
-- codigo_produto: VARCHAR(50)
-- descricao_produto: VARCHAR(255)
-- saldo_disponivel_produto: NUMERIC(15,2)
-- saldo_bloqueado_produto: VARCHAR(50)
-- lote_industria_produto: VARCHAR(50)
-- local_produto: VARCHAR(100)
-- armazem: VARCHAR(50)
-- preco_unitario: NUMERIC(15,2)
-- unidade_medida: VARCHAR(10)
-- categoria: VARCHAR(50)
-- data_validade: DATE
+# Para produção (Cloudflare)
+wrangler secret put SUPABASE_URL
+wrangler secret put SUPABASE_ANON_KEY
+wrangler secret put OPENAI_API_KEY # Opcional
 ```
 
-## 🎯 Próximas Melhorias
+## Deployment
 
-- [ ] Exportação de relatórios (PDF/Excel)
-- [ ] Gráficos e visualizações
-- [ ] Histórico de movimentações
-- [ ] Previsões de estoque com IA
-- [ ] Notificações automáticas
-- [ ] API REST pública
-- [ ] Mobile app
+### Deploy para Cloudflare Pages
+```bash
+# Build do projeto
+npm run build
 
-## 📝 Notas de Desenvolvimento
+# Deploy para produção
+npx wrangler pages deploy dist --project-name wiser-ia-assistant
 
-### Performance
-- O sistema carrega todos os dados na primeira requisição
-- Cache mantido por 5 minutos reduz carga no banco
-- Índices em memória aceleram buscas complexas
-- Respostas estruturadas facilitam parsing
+# Ou use o script npm
+npm run deploy:prod
+```
 
-### Segurança
-- Conexão segura com Supabase
-- Sem exposição de credenciais no frontend
-- Rate limiting implementado
-- Validação de entrada
+### Configuração de Produção
+- **Plataforma**: Cloudflare Pages
+- **Framework**: Hono + TypeScript
+- **Runtime**: Cloudflare Workers
+- **Build Output**: `/dist`
+- **Node Version**: 18+
 
-## 🤝 Suporte
+## Stack Tecnológico
+- **Backend**: Hono Framework (Cloudflare Workers)
+- **Frontend**: HTML5 + TailwindCSS + Vanilla JS
+- **Database**: Supabase (PostgreSQL)
+- **AI**: OpenAI GPT-4 (opcional)
+- **Deploy**: Cloudflare Pages
+- **Language**: TypeScript
+- **Build**: Vite
 
-Para questões ou sugestões:
-- Abra uma issue no GitHub
-- Use o console de debug para diagnóstico
-- Verifique o status das APIs em `/ai-status.html`
+## Scripts NPM Disponíveis
+```json
+{
+  "dev": "vite",
+  "dev:sandbox": "wrangler pages dev dist --ip 0.0.0.0 --port 3000",
+  "build": "vite build",
+  "preview": "wrangler pages dev dist",
+  "deploy": "npm run build && wrangler pages deploy dist",
+  "deploy:prod": "npm run build && wrangler pages deploy dist --project-name wiser-ia-assistant",
+  "clean-port": "fuser -k 3000/tcp 2>/dev/null || true",
+  "test": "curl http://localhost:3000/api/openai-enhanced/status"
+}
+```
+
+## Melhorias Recentes
+- ✅ Sistema de consulta em tempo real sem cache
+- ✅ Detecção inteligente de intenções (8 tipos)
+- ✅ Formatação rica das respostas com markdown
+- ✅ Interface responsiva com Tailwind CSS
+- ✅ Botões de consulta rápida
+- ✅ Estatísticas em tempo real
+- ✅ Suporte para integração com GPT-4
+- ✅ Análise completa mostrando TODOS os locais dos produtos
+
+## Próximos Passos Recomendados
+1. **Adicionar OpenAI API Key** para respostas ainda mais inteligentes
+2. **Implementar cache Redis** para melhor performance em produção
+3. **Criar dashboard analítico** com gráficos e visualizações
+4. **Adicionar autenticação** para controle de acesso
+5. **Implementar exportação** de relatórios em PDF/Excel
+6. **Criar API REST completa** para integração com outros sistemas
+7. **Adicionar testes automatizados** para garantir qualidade
+8. **Implementar CI/CD** com GitHub Actions
+
+## Status do Projeto
+- **Versão**: 3.0.0
+- **Status**: ✅ Ativo e Funcional
+- **Última Atualização**: Janeiro 2025
+- **Ambiente**: Desenvolvimento
+- **URL Pública**: https://3000-itd9ec3aegznw6o63t98q-6532622b.e2b.dev
+
+## Suporte e Contato
+Para dúvidas ou sugestões sobre o sistema, entre em contato através do GitHub Issues.
 
 ---
-
-**Versão**: 4.0.0  
-**Última Atualização**: 08/09/2024  
-**Status**: ✅ Production Ready  
-**Desenvolvido com**: ❤️ e muita ☕
+*Sistema desenvolvido para consulta inteligente de inventário com acesso em tempo real a 28.179 registros.*

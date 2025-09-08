@@ -5,18 +5,17 @@
   "pages_build_output_dir": "./dist",
   "compatibility_flags": ["nodejs_compat"],
   
-  // KV Namespace for storing sessions and configuration
-  "kv_namespaces": [
-    {
-      "binding": "KV",
-      "id": "wiser_kv_production",
-      "preview_id": "wiser_kv_preview"
-    }
-  ],
+  // KV Namespace para cache (opcional)
+  // Descomente e configure se quiser usar KV storage
+  // "kv_namespaces": [
+  //   {
+  //     "binding": "KV",
+  //     "id": "your-kv-namespace-id",
+  //     "preview_id": "your-kv-preview-id"
+  //   }
+  // ],
   
-  // Environment variables will be set via .dev.vars for local
-  // and via Cloudflare dashboard or wrangler secret for production
-  "vars": {
-    "SUPABASE_URL": "https://tecvgnrqcfqcrcodrjtt.supabase.co"
-  }
+  // Variáveis de ambiente são configuradas via:
+  // - Desenvolvimento: .dev.vars
+  // - Produção: wrangler secret put VARIABLE_NAME
 }

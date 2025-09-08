@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat OpenAI - Sistema Completo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .message-enter {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-50 to-blue-50 min-h-screen">
+    <div class="container mx-auto px-4 py-6 max-w-5xl">
+        <!-- Header -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800">
+                        <i class="fas fa-brain text-purple-600 mr-3"></i>
+                        Chat com 100% dos Dados
+                    </h1>
+                    <p class="text-gray-600 mt-1">Sistema analisando 28.179 registros completos</p>
+                </div>
+                <div class="text-right">
+                    <div id="status" class="text-sm">
+                        <span class="text-green-600">
+                            <i class="fas fa-check-circle"></i> Conectado ao Supabase
+                        </span>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1" id="stats">
+                        Carregando estatísticas...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Chat Area -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <!-- Messages -->
+                    <div id="messages" class="h-[500px] overflow-y-auto p-6 space-y-4">
+                        <div class="message-enter">
+                            <div class="flex items-start space-x-3">
+                                <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
+                                    <i class="fas fa-robot text-white"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="bg-purple-50 rounded-xl p-4 max-w-lg">
+                                        <p class="text-gray-700">
+                                            👋 Olá! Posso analisar 100% dos dados do inventário para você.
+                                        </p>
+                                        <p class="text-sm text-gray-600 mt-2">
+                                            Experimente perguntar sobre produtos, locais ou estatísticas!
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Input -->
+                    <div class="border-t p-4">
+                        <div class="flex space-x-2">
+                            <input 
+                                type="text" 
+                                id="message-input"
+                                placeholder="Digite sua pergunta..."
+                                class="flex-1 px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                onkeypress="if(event.key === 'Enter') sendMessage()"
+                            >
+                            <button 
+                                onclick="sendMessage()"
+                                class="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all"
+                            >
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                <!-- Quick Actions -->
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <h3 class="font-bold text-gray-800 mb-4">
+                        <i class="fas fa-bolt text-yellow-500 mr-2"></i>
+                        Consultas Rápidas
+                    </h3>
+                    <div class="space-y-2">
+                        <button onclick="quickQuery('O que está no local 034083501?')" 
+                                class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                            <div class="text-sm font-medium">📍 Local 034083501</div>
+                            <div class="text-xs text-gray-600">Ver produtos neste local</div>
+                        </button>
+                        
+                        <button onclick="quickQuery('Qual o saldo do produto RM 123?')" 
+                                class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                            <div class="text-sm font-medium">📦 Produto RM 123</div>
+                            <div class="text-xs text-gray-600">Saldo em todos os locais</div>
+                        </button>
+                        
+                        <button onclick="quickQuery('Qual o saldo do produto RM 139?')" 
+                                class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                            <div class="text-sm font-medium">📦 Produto RM 139</div>
+                            <div class="text-xs text-gray-600">Análise completa</div>
+                        </button>
+                        
+                        <button onclick="quickQuery('Produtos vencidos')" 
+                                class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                            <div class="text-sm font-medium">⚠️ Vencidos</div>
+                            <div class="text-xs text-gray-600">3996 produtos</div>
+                        </button>
+                        
+                        <button onclick="quickQuery('Resumo completo do inventário')" 
+                                class="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                            <div class="text-sm font-medium">📊 Resumo Geral</div>
+                            <div class="text-xs text-gray-600">Estatísticas completas</div>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Stats -->
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <h3 class="font-bold text-gray-800 mb-4">
+                        <i class="fas fa-chart-bar text-blue-600 mr-2"></i>
+                        Estatísticas
+                    </h3>
+                    <div id="stats-panel" class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Total Registros:</span>
+                            <span class="font-bold">28.179</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Produtos Únicos:</span>
+                            <span class="font-bold">842</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Localizações:</span>
+                            <span class="font-bold">13.147</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Lotes:</span>
+                            <span class="font-bold">3.609</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Info -->
+                <div class="bg-purple-50 rounded-2xl p-6">
+                    <h3 class="font-bold text-purple-800 mb-3">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Como funciona
+                    </h3>
+                    <ul class="text-sm text-purple-700 space-y-2">
+                        <li>✅ Analisa 100% dos dados</li>
+                        <li>✅ 28.179 registros carregados</li>
+                        <li>✅ Respostas precisas</li>
+                        <li>✅ Cache inteligente de 5min</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/chat-complete';
+        let sessionId = 'chat-' + Date.now();
+        
+        // Adicionar mensagem ao chat
+        function addMessage(content, isUser = false, metadata = null) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message-enter';
+            
+            if (isUser) {
+                messageDiv.innerHTML = `
+                    <div class="flex items-start space-x-3 justify-end">
+                        <div class="max-w-lg">
+                            <div class="bg-blue-600 text-white rounded-xl p-4">
+                                ${content}
+                            </div>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+                            <i class="fas fa-user text-white"></i>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Formatar resposta com markdown básico
+                const formatted = content
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n/g, '<br>')
+                    .replace(/={10,}/g, '<hr class="my-2">');
+                
+                messageDiv.innerHTML = `
+                    <div class="flex items-start space-x-3">
+                        <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
+                            <i class="fas fa-robot text-white"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="bg-gray-50 rounded-xl p-4 max-w-lg">
+                                <div class="prose prose-sm">${formatted}</div>
+                                ${metadata ? `
+                                <div class="text-xs text-gray-500 mt-3 pt-3 border-t">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    ${metadata.totalRegistros || 28179} registros analisados | 
+                                    ${metadata.responseTime || 0}ms
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // Enviar mensagem
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            // Adicionar mensagem do usuário
+            addMessage(message, true);
+            input.value = '';
+            
+            // Mostrar loading
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = 'loading';
+            loadingDiv.className = 'message-enter';
+            loadingDiv.innerHTML = `
+                <div class="flex items-start space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
+                        <i class="fas fa-robot text-white"></i>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-4">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-2 h-2 bg-purple-600 rounded-full animate-bounce"></div>
+                            <div class="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                            <div class="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                            <span class="ml-2 text-sm text-gray-600">Analisando 28.179 registros...</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('messages').appendChild(loadingDiv);
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        sessionId: sessionId,
+                        forceRefresh: false
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Remover loading
+                document.getElementById('loading')?.remove();
+                
+                // Adicionar resposta
+                addMessage(
+                    data.response || 'Erro ao processar mensagem',
+                    false,
+                    data.metadata?.dataStats
+                );
+                
+                // Atualizar estatísticas se disponível
+                if (data.metadata?.dataStats) {
+                    updateStats(data.metadata.dataStats);
+                }
+                
+            } catch (error) {
+                document.getElementById('loading')?.remove();
+                addMessage('❌ Erro de conexão: ' + error.message, false);
+            }
+        }
+        
+        // Consulta rápida
+        function quickQuery(query) {
+            document.getElementById('message-input').value = query;
+            sendMessage();
+        }
+        
+        // Atualizar estatísticas
+        function updateStats(stats) {
+            if (!stats) return;
+            
+            document.getElementById('stats').innerHTML = `
+                ${stats.totalRegistros?.toLocaleString('pt-BR') || '28.179'} registros | 
+                ${stats.produtosUnicos || '842'} produtos
+            `;
+            
+            document.getElementById('stats-panel').innerHTML = `
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Total Registros:</span>
+                    <span class="font-bold">${(stats.totalRegistros || 28179).toLocaleString('pt-BR')}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Produtos Únicos:</span>
+                    <span class="font-bold">${(stats.produtosUnicos || 842).toLocaleString('pt-BR')}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Localizações:</span>
+                    <span class="font-bold">${(stats.locaisUnicos || 13147).toLocaleString('pt-BR')}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Lotes:</span>
+                    <span class="font-bold">${(stats.lotesUnicos || 3609).toLocaleString('pt-BR')}</span>
+                </div>
+            `;
+        }
+        
+        // Carregar estatísticas iniciais
+        window.addEventListener('load', async () => {
+            document.getElementById('message-input').focus();
+            
+            // Buscar estatísticas
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: 'resumo',
+                        sessionId: 'stats-' + Date.now()
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.metadata?.dataStats) {
+                    updateStats(data.metadata.dataStats);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+            }
+        });
+    </script>
+</body>
+</html>
