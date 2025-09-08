@@ -1,0 +1,22 @@
+# Configuração para Cloudflare Pages/Workers
+name = "ia-wiser"
+main = "dist/_worker.js"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "dist"
+
+# KV Namespace para sessões
+[[kv_namespaces]]
+binding = "KV"
+id = "your_kv_id_here"
+preview_id = "your_preview_kv_id_here"
+
+# Configurações de build
+[build]
+command = "npm run build"
+upload.format = "service-worker"
+
+# Variáveis de ambiente (adicionar via dashboard ou CLI)
+# [vars]
+# SUPABASE_URL = "https://your-project.supabase.co"
+# Use: wrangler secret put GOOGLE_API_KEY
+# Use: wrangler secret put SUPABASE_ANON_KEY
