@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de API</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-2xl font-bold mb-6">Teste de APIs</h1>
+        
+        <div class="bg-white rounded-lg shadow p-6 mb-4">
+            <h2 class="text-lg font-semibold mb-4">Testar APIs</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <button onclick="testAPI('/api/test')" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                        Testar /api/test
+                    </button>
+                </div>
+                
+                <div>
+                    <button onclick="testAPI('/api/openai-enhanced/status')" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+                        Testar /api/openai-enhanced/status
+                    </button>
+                </div>
+                
+                <div>
+                    <button onclick="testPost('/api/test', {message: 'teste'})" class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">
+                        POST /api/test
+                    </button>
+                </div>
+                
+                <div>
+                    <button onclick="testPost('/api/openai-enhanced', {message: 'teste'})" class="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">
+                        POST /api/openai-enhanced
+                    </button>
+                </div>
+                
+                <div>
+                    <button onclick="testPost('/api/openai-realtime', {message: 'teste'})" class="px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600">
+                        POST /api/openai-realtime
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">Resultado:</h2>
+            <pre id="result" class="bg-gray-100 p-4 rounded overflow-x-auto text-sm"></pre>
+        </div>
+        
+        <div class="mt-4 bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">Console:</h2>
+            <pre id="console" class="bg-black text-green-400 p-4 rounded overflow-x-auto text-sm font-mono"></pre>
+        </div>
+    </div>
+    
+    <script>
+        const resultEl = document.getElementById('result');
+        const consoleEl = document.getElementById('console');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : '📝';
+            consoleEl.innerHTML += `[${timestamp}] ${prefix} ${message}\n`;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+        
+        async function testAPI(endpoint) {
+            log(`Testando GET ${endpoint}...`);
+            resultEl.textContent = 'Carregando...';
+            
+            try {
+                const response = await fetch(endpoint);
+                log(`Status: ${response.status} ${response.statusText}`);
+                log(`Content-Type: ${response.headers.get('content-type')}`);
+                
+                const text = await response.text();
+                log(`Tamanho da resposta: ${text.length} bytes`);
+                
+                try {
+                    const data = JSON.parse(text);
+                    resultEl.textContent = JSON.stringify(data, null, 2);
+                    log('✅ JSON válido!', 'success');
+                } catch (e) {
+                    resultEl.textContent = 'RESPOSTA (não é JSON):\n' + text;
+                    log(`Erro ao fazer parse: ${e.message}`, 'error');
+                }
+            } catch (error) {
+                resultEl.textContent = `ERRO: ${error.message}`;
+                log(`Erro na requisição: ${error.message}`, 'error');
+                console.error('Erro completo:', error);
+            }
+        }
+        
+        async function testPost(endpoint, payload) {
+            log(`Testando POST ${endpoint}...`);
+            log(`Payload: ${JSON.stringify(payload)}`);
+            resultEl.textContent = 'Carregando...';
+            
+            try {
+                const startTime = Date.now();
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const elapsed = Date.now() - startTime;
+                log(`Status: ${response.status} ${response.statusText}`);
+                log(`Tempo: ${elapsed}ms`);
+                log(`Content-Type: ${response.headers.get('content-type')}`);
+                
+                const text = await response.text();
+                log(`Tamanho da resposta: ${text.length} bytes`);
+                
+                try {
+                    const data = JSON.parse(text);
+                    resultEl.textContent = JSON.stringify(data, null, 2);
+                    log('✅ JSON válido!', 'success');
+                    
+                    if (data.success) {
+                        log('✅ Resposta com sucesso!', 'success');
+                    } else {
+                        log(`⚠️ Resposta com erro: ${data.error}`, 'error');
+                    }
+                } catch (e) {
+                    resultEl.textContent = 'RESPOSTA (não é JSON):\n' + text;
+                    log(`Erro ao fazer parse: ${e.message}`, 'error');
+                    log(`Primeiros 200 chars: ${text.substring(0, 200)}`, 'error');
+                }
+            } catch (error) {
+                resultEl.textContent = `ERRO: ${error.message}\n\nStack: ${error.stack}`;
+                log(`Erro na requisição: ${error.message}`, 'error');
+                console.error('Erro completo:', error);
+            }
+        }
+        
+        // Teste inicial
+        log('Página de teste carregada');
+        log('Clique nos botões para testar as APIs');
+    </script>
+</body>
+</html>

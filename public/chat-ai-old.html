@@ -255,5 +255,262 @@
 
     <!-- External JavaScript with better error handling -->
     <script src="/static/chat-ai.js"></script>
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('chat-form').addEventListener('submit', handleSubmit);
+            setTimeout(checkStatus, 1000);
+        });
+
+        // Handle form submission
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (!message || isTyping) return;
+            
+            // Add user message
+            addMessage(message, 'user');
+            input.value = '';
+            
+            // Send to API
+            await sendMessage(message);
+        }
+
+        // Quick query
+        function quickQuery(text) {
+            document.getElementById('message-input').value = text;
+            document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+        }
+
+        // Send message to API
+        async function sendMessage(message) {
+            isTyping = true;
+            showTypingIndicator();
+            
+            try {
+                const startTime = Date.now();
+                
+                // Fazer requisição com timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+                
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ message }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                // Verificar se a resposta é OK
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Verificar Content-Type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Resposta não é JSON:', text);
+                    throw new Error('Resposta inválida do servidor');
+                }
+                
+                // Parse JSON com tratamento de erro
+                let data;
+                try {
+                    const text = await response.text();
+                    data = JSON.parse(text);
+                } catch (parseError) {
+                    console.error('Erro ao fazer parse do JSON:', parseError);
+                    throw new Error('Resposta mal formatada do servidor');
+                }
+                
+                const responseTime = Date.now() - startTime;
+                
+                hideTypingIndicator();
+                
+                if (data.success) {
+                    // Adicionar resposta com metadados formatados
+                    const metadata = data.metadata || {};
+                    const metaText = `\n\n──────────────────────────────\n` +
+                        `📊 **Análise Completa**\n` +
+                        `• Tipo: ${metadata.intent || metadata.queryType || 'consulta'}\n` +
+                        `• Registros: ${metadata.recordsFound?.toLocaleString('pt-BR') || '0'}\n` +
+                        `• Tempo: ${responseTime}ms\n` +
+                        `• Fonte: Tempo Real`;
+                    
+                    addMessage(data.response + metaText, 'assistant');
+                } else {
+                    addMessage(`❌ Erro: ${data.error || 'Erro desconhecido'}`, 'error');
+                }
+                
+            } catch (error) {
+                hideTypingIndicator();
+                console.error('Erro detalhado:', error);
+                
+                let errorMessage = '❌ Erro: ';
+                if (error.name === 'AbortError') {
+                    errorMessage += 'Tempo limite excedido (30s)';
+                } else if (error.message.includes('fetch')) {
+                    errorMessage += 'Não foi possível conectar ao servidor';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                addMessage(errorMessage, 'error');
+                
+                // Tentar API fallback se a principal falhar
+                if (API_FALLBACK && !error.message.includes('fallback')) {
+                    console.log('Tentando API fallback...');
+                    try {
+                        const fallbackResponse = await fetch(API_FALLBACK, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ message })
+                        });
+                        
+                        if (fallbackResponse.ok) {
+                            const fallbackData = await fallbackResponse.json();
+                            if (fallbackData.success) {
+                                addMessage('✅ Usando sistema alternativo:\n\n' + fallbackData.response, 'assistant');
+                                return;
+                            }
+                        }
+                    } catch (fallbackError) {
+                        console.error('Fallback também falhou:', fallbackError);
+                    }
+                }
+            } finally {
+                isTyping = false;
+            }
+        }
+
+        // Add message to chat
+        function addMessage(content, type = 'user') {
+            const messagesContainer = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex items-start space-x-3';
+            
+            if (type === 'user') {
+                messageDiv.innerHTML = `
+                    <div class="flex-1 flex justify-end">
+                        <div class="bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-xl p-4 max-w-lg shadow-lg">
+                            <p class="font-medium">${escapeHtml(content)}</p>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center shadow-lg">
+                        <i class="fas fa-user text-gray-600"></i>
+                    </div>
+                `;
+            } else if (type === 'assistant') {
+                messageDiv.innerHTML = `
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg">
+                        <i class="fas fa-robot text-white text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-white rounded-xl p-5 shadow-lg border border-gray-100 max-w-3xl">
+                            <div class="message-content text-gray-800">${formatResponse(content)}</div>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'error') {
+                messageDiv.innerHTML = `
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center shadow-lg">
+                        <i class="fas fa-exclamation-triangle text-white"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-red-50 rounded-xl p-4 shadow-lg border border-red-200">
+                            <p class="text-red-700">${escapeHtml(content)}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Format response
+        function formatResponse(text) {
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-indigo-600">$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/^#\s+(.*)$/gm, '<h1 class="text-2xl font-bold mt-4 mb-2 text-gray-900">$1</h1>')
+                .replace(/^##\s+(.*)$/gm, '<h2 class="text-xl font-bold mt-3 mb-2 text-gray-800">$1</h2>')
+                .replace(/^###\s+(.*)$/gm, '<h3 class="text-lg font-bold mt-2 mb-1 text-gray-700">$1</h3>')
+                .replace(/^•\s+(.*)$/gm, '<li class="ml-4">• $1</li>')
+                .replace(/^(\d+)\.\s+(.*)$/gm, '<li class="ml-4">$1. $2</li>')
+                .replace(/──+/g, '<hr class="my-3 border-gray-300">')
+                .replace(/══+/g, '<hr class="my-3 border-gray-400 border-t-2">')
+                .replace(/\n/g, '<br>');
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Show typing indicator
+        function showTypingIndicator() {
+            document.getElementById('typing-indicator').classList.remove('hidden');
+            const messagesContainer = document.getElementById('messages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Hide typing indicator
+        function hideTypingIndicator() {
+            document.getElementById('typing-indicator').classList.add('hidden');
+        }
+
+        // Check status
+        async function checkStatus() {
+            try {
+                const response = await fetch(STATUS_ENDPOINT);
+                const data = await response.json();
+                
+                const statusDot = document.getElementById('status-dot');
+                const statusText = document.getElementById('status-text');
+                
+                if (data.status === 'online') {
+                    statusDot.className = 'w-3 h-3 bg-green-500 rounded-full pulse';
+                    statusText.textContent = 'Sistema Online';
+                } else {
+                    statusDot.className = 'w-3 h-3 bg-red-500 rounded-full';
+                    statusText.textContent = 'Sistema Offline';
+                }
+                
+            } catch (error) {
+                console.error('Erro ao verificar status:', error);
+                document.getElementById('status-dot').className = 'w-3 h-3 bg-yellow-500 rounded-full';
+                document.getElementById('status-text').textContent = 'Verificando...';
+            }
+        }
+
+        // Clear chat
+        function clearChat() {
+            const messagesContainer = document.getElementById('messages');
+            const firstMessage = messagesContainer.firstElementChild;
+            messagesContainer.innerHTML = '';
+            if (firstMessage) {
+                messagesContainer.appendChild(firstMessage);
+            }
+        }
+    </script>
 </body>
 </html>

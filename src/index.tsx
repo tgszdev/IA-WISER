@@ -9,6 +9,7 @@ import chatSmartRoutes from './routes/chat-smart'
 import chatCompleteRoutes from './routes/chat-complete'
 import openAIRealtimeRoutes from './routes/openai-realtime'
 import openAIEnhancedRoutes from './routes/openai-enhanced'
+import testRoutes from './routes/test'
 
 // Types
 type Bindings = {
@@ -37,6 +38,7 @@ app.route('/', chatSmartRoutes)
 app.route('/', chatCompleteRoutes)
 app.route('/', openAIRealtimeRoutes)
 app.route('/', openAIEnhancedRoutes)
+app.route('/', testRoutes)
 
 // Note: Static files are served directly by Cloudflare Pages
 // No need for serveStatic in production
