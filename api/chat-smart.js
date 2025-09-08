@@ -32,8 +32,8 @@ function analyzeIntent(message) {
   return { type: 'general', productCode, confidence: 0.5 };
 }
 
-// FUNÇÃO PARA BUSCAR DADOS REAIS DO SUPABASE
-async function getSupabaseData(productCode) {
+// FUNÇÃO PARA BUSCAR 100% DOS DADOS DO SUPABASE
+async function getSupabaseData(productCode = null, getAllData = false) {
   try {
     const { createClient } = await import('@supabase/supabase-js');
     
@@ -44,23 +44,63 @@ async function getSupabaseData(productCode) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     if (productCode) {
-      // Buscar produto específico
-      const { data, error } = await supabase
-        .from('estoque')
-        .select('*')
-        .eq('codigo_produto', productCode);
-      
-      if (error) throw error;
-      return data || [];
-    } else {
-      // Buscar resumo geral
+      // Buscar produto específico - TODOS os registros desse produto
       const { data, error, count } = await supabase
         .from('estoque')
         .select('*', { count: 'exact' })
-        .limit(20);
+        .eq('codigo_produto', productCode);
       
       if (error) throw error;
+      console.log(`Produto ${productCode}: ${count} registros encontrados`);
       return { data: data || [], count: count || 0 };
+    } else {
+      // BUSCAR 100% DOS DADOS - SEM LIMITE
+      console.log('Buscando 100% dos dados da tabela estoque...');
+      
+      // Primeiro, obter o total de registros
+      const { count: totalCount } = await supabase
+        .from('estoque')
+        .select('*', { count: 'exact', head: true });
+      
+      console.log(`Total de registros no banco: ${totalCount}`);
+      
+      // Buscar TODOS os dados em lotes se necessário
+      let allData = [];
+      const batchSize = 1000; // Buscar em lotes de 1000
+      
+      for (let offset = 0; offset < totalCount; offset += batchSize) {
+        const { data, error } = await supabase
+          .from('estoque')
+          .select('*')
+          .range(offset, offset + batchSize - 1)
+          .order('codigo_produto', { ascending: true });
+        
+        if (error) throw error;
+        allData = [...allData, ...data];
+        
+        console.log(`Carregados ${allData.length}/${totalCount} registros...`);
+      }
+      
+      // Calcular estatísticas completas
+      const stats = {
+        totalRegistros: allData.length,
+        produtosUnicos: [...new Set(allData.map(item => item.codigo_produto))].length,
+        totalSaldo: allData.reduce((sum, item) => sum + (parseFloat(item.saldo_disponivel_produto) || 0), 0),
+        produtosBloqueados: allData.filter(item => item.saldo_bloqueado_produto).length,
+        produtosAvaria: allData.filter(item => item.saldo_bloqueado_produto === 'Avaria').length,
+        produtosVencidos: allData.filter(item => item.saldo_bloqueado_produto === 'Vencido').length,
+        armazens: [...new Set(allData.map(item => item.armazem).filter(Boolean))],
+        locais: [...new Set(allData.map(item => item.local_produto).filter(Boolean))].length
+      };
+      
+      console.log('Estatísticas calculadas:', stats);
+      
+      return { 
+        data: getAllData ? allData : allData.slice(0, 100), // Se getAllData, retorna tudo
+        count: totalCount,
+        stats: stats,
+        fullDataLoaded: true
+      };
     }
   } catch (error) {
     console.error('Erro Supabase:', error);
@@ -86,33 +126,51 @@ async function getLocalResponse(intent, message) {
   
   // BUSCAR DADOS REAIS DO SUPABASE
   if (productCode && (type === 'productBalance' || type === 'productInfo')) {
-    const produtos = await getSupabaseData(productCode);
+    const result = await getSupabaseData(productCode);
     
-    if (produtos && produtos.length > 0) {
+    if (result && result.data && result.data.length > 0) {
+      const produtos = result.data;
       const totalSaldo = produtos.reduce((sum, p) => sum + (parseFloat(p.saldo_disponivel_produto) || 0), 0);
       const produto = produtos[0];
       
-      return `📦 **Produto ${produto.codigo_produto}**\n\n` +
-             `**Descrição**: ${produto.descricao_produto}\n` +
-             `**Saldo Total**: ${totalSaldo.toLocaleString('pt-BR')} unidades\n` +
-             `**Localizações**: ${produtos.length}\n` +
-             `**Armazém**: ${produto.armazem || 'N/A'}\n\n` +
-             `Dados REAIS do banco de dados.`;
+      let resposta = `📦 **Produto ${produto.codigo_produto}**\n\n`;
+      resposta += `**Descrição**: ${produto.descricao_produto}\n`;
+      resposta += `**Saldo Total**: ${totalSaldo.toLocaleString('pt-BR')} unidades\n`;
+      resposta += `**Localizações**: ${produtos.length} registros\n`;
+      resposta += `**Armazém**: ${produto.armazem || 'N/A'}\n\n`;
+      
+      // Mostrar primeiras 5 localizações
+      resposta += `**Detalhamento por local:**\n`;
+      produtos.slice(0, 5).forEach(p => {
+        resposta += `• ${p.local_produto}: ${p.saldo_disponivel_produto} un`;
+        if (p.lote_industria_produto) resposta += ` (Lote: ${p.lote_industria_produto})`;
+        resposta += `\n`;
+      });
+      
+      if (produtos.length > 5) {
+        resposta += `... e mais ${produtos.length - 5} localizações\n`;
+      }
+      
+      resposta += `\nDados REAIS do banco (${result.count} registros totais).`;
+      return resposta;
     }
-    return `❌ Produto ${productCode} não encontrado no banco de dados REAL.`;
+    return `❌ Produto ${productCode} não encontrado no banco de dados.`;
   }
   
-  if (type === 'totalInventory') {
-    const result = await getSupabaseData();
+  if (type === 'totalInventory' || type === 'inventorySummary') {
+    const result = await getSupabaseData(null, true); // Buscar 100% dos dados
     
-    if (result && result.data) {
-      const totalSaldo = result.data.reduce((sum, p) => sum + (parseFloat(p.saldo_disponivel_produto) || 0), 0);
-      
-      return `📊 **Resumo do Inventário REAL**\n\n` +
-             `**Total de registros**: ${result.count}\n` +
-             `**Saldo das amostras**: ${totalSaldo.toLocaleString('pt-BR')} unidades\n` +
-             `**Dados do banco**: Supabase\n\n` +
-             `Dados REAIS do banco de dados.`;
+    if (result && result.stats) {
+      return `📊 **RESUMO COMPLETO DO INVENTÁRIO (100% DOS DADOS)**\n\n` +
+             `**Total de registros**: ${result.stats.totalRegistros.toLocaleString('pt-BR')}\n` +
+             `**Produtos únicos**: ${result.stats.produtosUnicos}\n` +
+             `**Saldo total**: ${result.stats.totalSaldo.toLocaleString('pt-BR')} unidades\n` +
+             `**Produtos bloqueados**: ${result.stats.produtosBloqueados}\n` +
+             `• Com avaria: ${result.stats.produtosAvaria}\n` +
+             `• Vencidos: ${result.stats.produtosVencidos}\n` +
+             `**Armazéns**: ${result.stats.armazens.join(', ')}\n` +
+             `**Locais diferentes**: ${result.stats.locais}\n\n` +
+             `🔍 Dados 100% REAIS do banco de dados Supabase.`;
     }
     return '⚠️ Erro ao acessar banco de dados.';
   }
@@ -159,23 +217,49 @@ export default async function handler(req, res) {
         console.log('Trying OpenAI with REAL data...');
         const openai = new OpenAI({ apiKey: openaiKey });
         
-        // BUSCAR DADOS REAIS DO SUPABASE PARA OPENAI
+        // BUSCAR 100% DOS DADOS DO SUPABASE PARA OPENAI
         let inventoryData = null;
         if (intent.productCode) {
           inventoryData = await getSupabaseData(intent.productCode);
-        } else if (intent.type === 'totalInventory' || intent.type === 'inventorySummary') {
-          inventoryData = await getSupabaseData();
+        } else {
+          // SEMPRE buscar TODOS os dados para dar visão completa à IA
+          inventoryData = await getSupabaseData(null, true); // getAllData = true
         }
         
-        // Preparar contexto com dados REAIS
+        // Preparar contexto com 100% dos dados
         let systemPrompt = "Você é o Wiser IA Assistant, especializado em gestão de inventário.\n\n";
         
-        if (inventoryData) {
-          systemPrompt += "DADOS REAIS DO BANCO DE DADOS SUPABASE:\n";
-          systemPrompt += JSON.stringify(inventoryData, null, 2).slice(0, 2000) + "\n\n";
-          systemPrompt += "Use APENAS os dados fornecidos acima para responder. ";
-          systemPrompt += "Seja preciso com números e quantidades. ";
-          systemPrompt += "Se não houver dados, informe claramente.";
+        if (inventoryData && inventoryData.stats) {
+          systemPrompt += "ESTATÍSTICAS COMPLETAS DO BANCO (100% DOS DADOS):\n";
+          systemPrompt += `- Total de registros: ${inventoryData.stats.totalRegistros}\n`;
+          systemPrompt += `- Produtos únicos: ${inventoryData.stats.produtosUnicos}\n`;
+          systemPrompt += `- Saldo total: ${inventoryData.stats.totalSaldo.toLocaleString('pt-BR')} unidades\n`;
+          systemPrompt += `- Produtos bloqueados: ${inventoryData.stats.produtosBloqueados}\n`;
+          systemPrompt += `- Produtos com avaria: ${inventoryData.stats.produtosAvaria}\n`;
+          systemPrompt += `- Produtos vencidos: ${inventoryData.stats.produtosVencidos}\n`;
+          systemPrompt += `- Armazéns: ${inventoryData.stats.armazens.join(', ')}\n`;
+          systemPrompt += `- Total de locais: ${inventoryData.stats.locais}\n\n`;
+          
+          // Se for consulta específica, incluir dados detalhados
+          if (inventoryData.data && inventoryData.data.length > 0) {
+            systemPrompt += "DADOS DETALHADOS:\n";
+            // Limitar a 50 produtos para não exceder limite do OpenAI
+            const produtosParaEnviar = inventoryData.data.slice(0, 50);
+            systemPrompt += JSON.stringify(produtosParaEnviar, null, 2).slice(0, 4000) + "\n\n";
+            
+            if (inventoryData.data.length > 50) {
+              systemPrompt += `... e mais ${inventoryData.data.length - 50} produtos no banco.\n\n`;
+            }
+          }
+          
+          systemPrompt += "IMPORTANTE: Você tem acesso a 100% dos dados do inventário. ";
+          systemPrompt += "Use as estatísticas completas para responder com precisão. ";
+          systemPrompt += "Seja específico com números e quantidades reais.";
+        } else if (inventoryData && inventoryData.data) {
+          // Fallback se não tiver stats
+          systemPrompt += "DADOS DO BANCO DE DADOS:\n";
+          systemPrompt += JSON.stringify(inventoryData, null, 2).slice(0, 4000) + "\n\n";
+          systemPrompt += "Use APENAS os dados fornecidos acima para responder.";
         }
         
         systemPrompt += "\nResponda em português brasileiro de forma clara e objetiva.";

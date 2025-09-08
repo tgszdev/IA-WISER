@@ -91,56 +91,73 @@ FORMATO:
         });
       }
 
-      // Formata dados de inventário de forma mais estruturada
+      // Formata dados de inventário - 100% VISÃO COMPLETA
       if (inventoryData) {
-        let inventoryContext = 'DADOS REAIS DO BANCO DE DADOS (SUPABASE):\n\n';
+        let inventoryContext = '🌐 VOCÊ TEM ACESSO A 100% DOS DADOS DO INVENTÁRIO:\n\n';
         
-        // Adiciona resumo se disponível
-        if (inventoryData.summary) {
-          inventoryContext += `📊 RESUMO GERAL DO INVENTÁRIO:\n`;
-          inventoryContext += `- Total de itens no banco: ${inventoryData.totalItems || 0}\n`;
-          inventoryContext += `- Produtos únicos: ${inventoryData.summary.uniqueProducts || 0}\n`;
-          inventoryContext += `- Valor total do estoque: R$ ${inventoryData.summary.totalValue || 0}\n`;
-          inventoryContext += `- Produtos com estoque baixo: ${inventoryData.summary.lowStockItems || 0}\n`;
-          inventoryContext += `- Produtos bloqueados: ${inventoryData.summary.blockedItems || 0}\n\n`;
+        // Adiciona resumo completo se disponível
+        if (inventoryData.summary || inventoryData.stats) {
+          const stats = inventoryData.summary || inventoryData.stats;
+          inventoryContext += `📊 ESTATÍSTICAS COMPLETAS (100% DOS DADOS):\n`;
+          inventoryContext += `- Total de registros no banco: ${inventoryData.totalItems || stats.totalRecords || stats.totalRegistros || 0}\n`;
+          inventoryContext += `- Produtos únicos: ${stats.uniqueProducts || stats.produtosUnicos || 0}\n`;
+          inventoryContext += `- Saldo total geral: ${stats.totalBalance || stats.totalSaldo || stats.totalValue || 0} unidades\n`;
+          inventoryContext += `- Produtos bloqueados: ${stats.blockedProducts || stats.produtosBloqueados || stats.blockedItems || 0}\n`;
+          inventoryContext += `- Produtos com avaria: ${stats.damageProducts || stats.produtosAvaria || 0}\n`;
+          inventoryContext += `- Produtos vencidos: ${stats.expiredProducts || stats.produtosVencidos || 0}\n`;
+          inventoryContext += `- Armazéns ativos: ${stats.warehouses ? stats.warehouses.length : (stats.armazens ? stats.armazens.length : 0)}\n`;
+          inventoryContext += `- Locais diferentes: ${stats.locations || stats.locais || 0}\n\n`;
+          inventoryContext += `⚠️ IMPORTANTE: Estes são os dados COMPLETOS, não uma amostra.\n\n`;
         }
         
-        // Adiciona dados dos produtos de forma mais clara
+        // Adiciona amostra dos produtos (limitar para não exceder limite do OpenAI)
         if (inventoryData.queryResults && inventoryData.queryResults.length > 0) {
-          inventoryContext += `📦 PRODUTOS ENCONTRADOS NO BANCO (${inventoryData.queryResults.length} registros):\n`;
+          const totalProdutos = inventoryData.queryResults.length;
+          inventoryContext += `📦 AMOSTRA DOS PRODUTOS (mostrando 30 de ${totalProdutos} registros):\n`;
           inventoryContext += `════════════════════════════════════════════\n`;
           
-          inventoryData.queryResults.forEach((item: any, index: number) => {
-            if (index < 15) { // Aumenta para 15 produtos
-              inventoryContext += `\n${index + 1}. PRODUTO:\n`;
-              inventoryContext += `   📌 Código: ${item.codigo_produto || item.codigo || 'N/A'}\n`;
-              inventoryContext += `   📝 Descrição: ${item.descricao_produto || item.descricao || 'N/A'}\n`;
-              inventoryContext += `   📊 Saldo Disponível: ${item.saldo_disponivel_produto || item.saldo || 0} unidades\n`;
-              
-              if (item.saldo_bloqueado_produto) {
-                inventoryContext += `   ⚠️ Status Bloqueado: ${item.saldo_bloqueado_produto}\n`;
-              }
-              
-              inventoryContext += `   📍 Localização: ${item.local_produto || item.local || 'N/A'}\n`;
-              inventoryContext += `   🏢 Armazém: ${item.armazem || 'N/A'}\n`;
-              
-              if (item.lote_industria_produto || item.lote) {
-                inventoryContext += `   🏷️ Lote: ${item.lote_industria_produto || item.lote}\n`;
-              }
-              
-              if (item.preco_unitario || item.preco) {
-                inventoryContext += `   💰 Preço: R$ ${item.preco_unitario || item.preco}\n`;
-              }
+          // Agrupar por produto para visão mais clara
+          const produtosAgrupados = {};
+          inventoryData.queryResults.forEach((item: any) => {
+            const codigo = item.codigo_produto || item.codigo;
+            if (!produtosAgrupados[codigo]) {
+              produtosAgrupados[codigo] = {
+                descricao: item.descricao_produto || item.descricao,
+                locais: [],
+                saldoTotal: 0,
+                armazens: new Set()
+              };
             }
+            produtosAgrupados[codigo].locais.push({
+              local: item.local_produto,
+              saldo: parseFloat(item.saldo_disponivel_produto) || 0,
+              status: item.saldo_bloqueado_produto
+            });
+            produtosAgrupados[codigo].saldoTotal += parseFloat(item.saldo_disponivel_produto) || 0;
+            if (item.armazem) produtosAgrupados[codigo].armazens.add(item.armazem);
           });
           
-          if (inventoryData.queryResults.length > 15) {
-            inventoryContext += `\n════════════════════════════════════════════\n`;
-            inventoryContext += `... e mais ${inventoryData.queryResults.length - 15} produtos no banco de dados\n`;
+          // Mostrar produtos agrupados
+          let count = 0;
+          for (const [codigo, info] of Object.entries(produtosAgrupados)) {
+            if (count >= 30) break;
+            inventoryContext += `\n📦 ${codigo}: ${info.descricao}\n`;
+            inventoryContext += `   Saldo total: ${info.saldoTotal} unidades em ${info.locais.length} locais\n`;
+            inventoryContext += `   Armazéns: ${Array.from(info.armazens).join(', ')}\n`;
+            count++;
           }
+          
+          const totalProdutosUnicos = Object.keys(produtosAgrupados).length;
+          if (totalProdutosUnicos > 30) {
+            inventoryContext += `\n... e mais ${totalProdutosUnicos - 30} produtos únicos\n`;
+          }
+          
+          inventoryContext += `\n✅ VOCÊ TEM ACESSO A 100% DOS ${totalProdutos} REGISTROS.\n`;
+        } else if (inventoryData.fullDataLoaded) {
+          inventoryContext += '🌐 BANCO DE DADOS COMPLETAMENTE CARREGADO.\n';
+          inventoryContext += 'Todos os dados estão disponíveis para análise.\n';
         } else {
-          inventoryContext += '⚠️ NENHUM PRODUTO ENCONTRADO para esta consulta.\n';
-          inventoryContext += 'O banco de dados não retornou resultados para os critérios especificados.\n';
+          inventoryContext += '⚠️ NENHUM PRODUTO ENCONTRADO para esta consulta específica.\n';
         }
         
         // Adiciona informações sobre a intenção detectada
@@ -153,7 +170,12 @@ FORMATO:
           }
         }
         
-        inventoryContext += `\n⚠️ IMPORTANTE: Use APENAS os dados acima para responder. Não invente informações.\n`;
+        inventoryContext += `\n🎯 INSTRUÇÕES IMPORTANTES:\n`;
+        inventoryContext += `1. Você tem acesso a 100% dos dados do inventário\n`;
+        inventoryContext += `2. Use as estatísticas COMPLETAS fornecidas\n`;
+        inventoryContext += `3. Seja PRECISO com números - não arredonde\n`;
+        inventoryContext += `4. Se perguntarem sobre o total, use os dados COMPLETOS\n`;
+        inventoryContext += `5. Não invente - use apenas os dados fornecidos\n`;
         
         messages.push({
           role: 'system',

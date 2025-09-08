@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Final - 100% dos Dados Reais do Supabase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-blue-900 to-purple-900 text-white min-h-screen p-8">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-4xl font-bold mb-8 text-center">
+            <i class="fas fa-database mr-3 text-yellow-400"></i>
+            100% dos Dados do Supabase - Visão Completa
+        </h1>
+
+        <!-- Cartão Principal de Estatísticas -->
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 mb-8 shadow-2xl">
+            <h2 class="text-2xl font-bold mb-6 flex items-center">
+                <i class="fas fa-chart-line mr-3 text-green-400"></i>
+                Estatísticas Completas do Inventário
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Total de Registros -->
+                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 shadow-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <i class="fas fa-database text-3xl text-blue-200"></i>
+                        <span class="text-xs bg-blue-700 px-2 py-1 rounded">TOTAL</span>
+                    </div>
+                    <div class="text-3xl font-bold" id="totalRegistros">-</div>
+                    <div class="text-sm text-blue-200">Registros no Banco</div>
+                </div>
+
+                <!-- Produtos Únicos -->
+                <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 shadow-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <i class="fas fa-boxes text-3xl text-purple-200"></i>
+                        <span class="text-xs bg-purple-700 px-2 py-1 rounded">ÚNICOS</span>
+                    </div>
+                    <div class="text-3xl font-bold" id="produtosUnicos">-</div>
+                    <div class="text-sm text-purple-200">Produtos Diferentes</div>
+                </div>
+
+                <!-- Saldo Total -->
+                <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 shadow-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <i class="fas fa-cubes text-3xl text-green-200"></i>
+                        <span class="text-xs bg-green-700 px-2 py-1 rounded">ESTOQUE</span>
+                    </div>
+                    <div class="text-3xl font-bold" id="saldoTotal">-</div>
+                    <div class="text-sm text-green-200">Unidades Totais</div>
+                </div>
+
+                <!-- Produtos Bloqueados -->
+                <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-6 shadow-lg">
+                    <div class="flex items-center justify-between mb-2">
+                        <i class="fas fa-ban text-3xl text-red-200"></i>
+                        <span class="text-xs bg-red-700 px-2 py-1 rounded">BLOQUEADOS</span>
+                    </div>
+                    <div class="text-3xl font-bold" id="produtosBloqueados">-</div>
+                    <div class="text-sm text-red-200">Itens Bloqueados</div>
+                </div>
+            </div>
+
+            <!-- Detalhes Adicionais -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div class="bg-white/5 rounded-lg p-4 border border-white/20">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-exclamation-triangle mr-2 text-yellow-400"></i>
+                        <span class="font-semibold">Produtos com Avaria</span>
+                    </div>
+                    <div class="text-2xl font-bold" id="produtosAvaria">-</div>
+                </div>
+
+                <div class="bg-white/5 rounded-lg p-4 border border-white/20">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-calendar-times mr-2 text-orange-400"></i>
+                        <span class="font-semibold">Produtos Vencidos</span>
+                    </div>
+                    <div class="text-2xl font-bold" id="produtosVencidos">-</div>
+                </div>
+
+                <div class="bg-white/5 rounded-lg p-4 border border-white/20">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-map-marker-alt mr-2 text-cyan-400"></i>
+                        <span class="font-semibold">Locais Diferentes</span>
+                    </div>
+                    <div class="text-2xl font-bold" id="locaisDiferentes">-</div>
+                </div>
+            </div>
+
+            <!-- Armazéns -->
+            <div class="mt-6 bg-white/5 rounded-lg p-4 border border-white/20">
+                <div class="flex items-center mb-2">
+                    <i class="fas fa-warehouse mr-2 text-indigo-400"></i>
+                    <span class="font-semibold">Armazéns Ativos</span>
+                </div>
+                <div class="text-lg" id="armazens">-</div>
+            </div>
+        </div>
+
+        <!-- Status da Conexão -->
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-8 shadow-2xl">
+            <h3 class="text-xl font-semibold mb-4">
+                <i class="fas fa-plug mr-2"></i>
+                Status da Conexão
+            </h3>
+            <div id="connectionStatus" class="space-y-2">
+                <div class="flex items-center">
+                    <div class="w-3 h-3 bg-yellow-400 rounded-full animate-pulse mr-3"></div>
+                    <span>Conectando ao Supabase...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botões de Teste -->
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl">
+            <h3 class="text-xl font-semibold mb-4">
+                <i class="fas fa-flask mr-2"></i>
+                Testes de Integração
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button 
+                    onclick="loadInventorySummary()"
+                    class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold transition-all transform hover:scale-105"
+                >
+                    <i class="fas fa-sync-alt mr-2"></i>
+                    Recarregar 100% dos Dados
+                </button>
+                <button 
+                    onclick="testProduct('000004')"
+                    class="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-lg font-semibold transition-all transform hover:scale-105"
+                >
+                    <i class="fas fa-search mr-2"></i>
+                    Buscar Produto 000004
+                </button>
+            </div>
+            <div id="testResults" class="mt-4"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        
+        async function loadInventorySummary() {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.innerHTML = `
+                <div class="flex items-center">
+                    <div class="w-3 h-3 bg-yellow-400 rounded-full animate-pulse mr-3"></div>
+                    <span>Carregando 100% dos dados do Supabase...</span>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch(`${API_URL}/inventory/summary`);
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    // Atualizar estatísticas
+                    document.getElementById('totalRegistros').textContent = 
+                        data.data.totalRecords.toLocaleString('pt-BR');
+                    document.getElementById('produtosUnicos').textContent = 
+                        data.data.uniqueProducts.toLocaleString('pt-BR');
+                    document.getElementById('saldoTotal').textContent = 
+                        Math.round(data.data.totalBalance).toLocaleString('pt-BR');
+                    document.getElementById('produtosBloqueados').textContent = 
+                        data.data.blockedProducts.toLocaleString('pt-BR');
+                    document.getElementById('produtosAvaria').textContent = 
+                        data.data.damageProducts.toLocaleString('pt-BR');
+                    document.getElementById('produtosVencidos').textContent = 
+                        data.data.expiredProducts.toLocaleString('pt-BR');
+                    document.getElementById('locaisDiferentes').textContent = 
+                        data.data.locations.toLocaleString('pt-BR');
+                    document.getElementById('armazens').textContent = 
+                        data.data.warehouses.join(', ');
+                    
+                    statusDiv.innerHTML = `
+                        <div class="flex items-center text-green-400">
+                            <div class="w-3 h-3 bg-green-400 rounded-full mr-3"></div>
+                            <span class="font-semibold">✅ Conectado com sucesso! 100% dos dados carregados.</span>
+                        </div>
+                        <div class="text-sm text-gray-300 mt-2">
+                            <i class="fas fa-database mr-1"></i>
+                            Banco: Supabase | 
+                            <i class="fas fa-table mr-1 ml-2"></i>
+                            Tabela: estoque | 
+                            <i class="fas fa-check-circle mr-1 ml-2"></i>
+                            Status: Online | 
+                            <i class="fas fa-percentage mr-1 ml-2"></i>
+                            Dados: 100% Carregados
+                        </div>
+                    `;
+                    
+                    // Mostrar confirmação
+                    if (data.fullDataLoaded) {
+                        const resultsDiv = document.getElementById('testResults');
+                        resultsDiv.innerHTML = `
+                            <div class="bg-green-500/20 border border-green-400 rounded-lg p-4 mt-4">
+                                <p class="text-green-400 font-semibold">
+                                    <i class="fas fa-check-circle mr-2"></i>
+                                    CONFIRMADO: 100% dos dados foram carregados com sucesso!
+                                </p>
+                                <p class="text-sm mt-2">
+                                    ${data.message}
+                                </p>
+                            </div>
+                        `;
+                    }
+                } else {
+                    throw new Error(data.error || 'Erro ao carregar dados');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="flex items-center text-red-400">
+                        <div class="w-3 h-3 bg-red-400 rounded-full mr-3"></div>
+                        <span>❌ Erro: ${error.message}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testProduct(code) {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<p class="text-yellow-400">Buscando produto...</p>';
+            
+            try {
+                const response = await fetch(`${API_URL}/inventory/product/${code}`);
+                const data = await response.json();
+                
+                if (data.success && data.data && data.data.length > 0) {
+                    const totalSaldo = data.data.reduce((sum, item) => 
+                        sum + (parseFloat(item.saldo_disponivel_produto) || 0), 0
+                    );
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="bg-blue-500/20 border border-blue-400 rounded-lg p-4 mt-4">
+                            <h4 class="font-semibold text-lg mb-2">
+                                <i class="fas fa-box mr-2"></i>
+                                ${data.data[0].codigo_produto} - ${data.data[0].descricao_produto}
+                            </h4>
+                            <div class="grid grid-cols-2 gap-2 text-sm">
+                                <p><span class="text-gray-400">Registros:</span> ${data.data.length}</p>
+                                <p><span class="text-gray-400">Saldo Total:</span> ${totalSaldo.toLocaleString('pt-BR')} un</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="bg-red-500/20 border border-red-400 rounded-lg p-4 mt-4">
+                            <p class="text-red-400">Produto ${code} não encontrado</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="bg-red-500/20 border border-red-400 rounded-lg p-4 mt-4">
+                        <p class="text-red-400">Erro: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Carregar dados ao iniciar
+        window.addEventListener('load', () => {
+            loadInventorySummary();
+        });
+    </script>
+</body>
+</html>

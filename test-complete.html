@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Completo - 100% dos Dados Supabase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white p-8">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8 flex items-center">
+            <i class="fas fa-database mr-3 text-blue-400"></i>
+            Teste de Integração Completa - 100% dos Dados
+        </h1>
+
+        <!-- Status da Conexão -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">
+                <i class="fas fa-plug mr-2"></i>
+                Status da Conexão
+            </h2>
+            <div id="connectionStatus" class="space-y-2">
+                <p class="text-gray-400">Aguardando teste...</p>
+            </div>
+        </div>
+
+        <!-- Estatísticas do Banco -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">
+                <i class="fas fa-chart-bar mr-2"></i>
+                Estatísticas Completas (100% dos Dados)
+            </h2>
+            <div id="databaseStats" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-gray-700 p-4 rounded">
+                    <p class="text-gray-400 text-sm">Total Registros</p>
+                    <p class="text-2xl font-bold" id="totalRegistros">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded">
+                    <p class="text-gray-400 text-sm">Produtos Únicos</p>
+                    <p class="text-2xl font-bold" id="produtosUnicos">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded">
+                    <p class="text-gray-400 text-sm">Saldo Total</p>
+                    <p class="text-2xl font-bold" id="saldoTotal">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded">
+                    <p class="text-gray-400 text-sm">Produtos Bloqueados</p>
+                    <p class="text-2xl font-bold" id="produtosBloqueados">-</p>
+                </div>
+            </div>
+            <div id="loadingProgress" class="mt-4 hidden">
+                <div class="bg-gray-700 rounded-full h-4">
+                    <div id="progressBar" class="bg-blue-500 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p class="text-sm text-gray-400 mt-2" id="progressText">Carregando...</p>
+            </div>
+        </div>
+
+        <!-- Teste de Busca -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">
+                <i class="fas fa-search mr-2"></i>
+                Teste de Busca por Produto
+            </h2>
+            <div class="flex gap-4 mb-4">
+                <input 
+                    type="text" 
+                    id="productCode" 
+                    placeholder="Digite o código do produto (ex: 000004)"
+                    class="flex-1 px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value="000004"
+                >
+                <button 
+                    onclick="searchProduct()"
+                    class="px-6 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold transition-colors"
+                >
+                    <i class="fas fa-search mr-2"></i>
+                    Buscar
+                </button>
+            </div>
+            <div id="searchResults" class="space-y-2"></div>
+        </div>
+
+        <!-- Teste do Chat IA -->
+        <div class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">
+                <i class="fas fa-robot mr-2"></i>
+                Teste do Chat IA com 100% dos Dados
+            </h2>
+            <div class="space-y-4 mb-4">
+                <button 
+                    onclick="testAI('Qual o total de produtos no estoque?')"
+                    class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-left transition-colors"
+                >
+                    <i class="fas fa-database mr-2"></i>
+                    Testar: "Qual o total de produtos no estoque?"
+                </button>
+                <button 
+                    onclick="testAI('Me mostre as estatísticas completas do inventário')"
+                    class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-left transition-colors"
+                >
+                    <i class="fas fa-chart-pie mr-2"></i>
+                    Testar: "Estatísticas completas do inventário"
+                </button>
+                <button 
+                    onclick="testAI('Qual o saldo do produto 000004?')"
+                    class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-left transition-colors"
+                >
+                    <i class="fas fa-box mr-2"></i>
+                    Testar: "Saldo do produto 000004"
+                </button>
+            </div>
+            <div id="aiResponse" class="bg-gray-700 rounded-lg p-4 min-h-[200px]">
+                <p class="text-gray-400">Clique em um botão acima para testar a IA...</p>
+            </div>
+        </div>
+
+        <!-- Log de Eventos -->
+        <div class="mt-6 bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">
+                <i class="fas fa-terminal mr-2"></i>
+                Log de Eventos
+            </h2>
+            <div id="eventLog" class="bg-black rounded-lg p-4 font-mono text-sm max-h-96 overflow-auto">
+                <p class="text-green-400">Sistema iniciado...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+        
+        function addLog(message, type = 'info') {
+            const log = document.getElementById('eventLog');
+            const time = new Date().toLocaleTimeString('pt-BR');
+            const colors = {
+                'info': 'text-green-400',
+                'error': 'text-red-400',
+                'warning': 'text-yellow-400',
+                'success': 'text-blue-400'
+            };
+            log.innerHTML += `<p class="${colors[type] || 'text-gray-400'}">[${time}] ${message}</p>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        async function testConnection() {
+            addLog('🔍 Testando conexão com Supabase...', 'info');
+            const statusDiv = document.getElementById('connectionStatus');
+            
+            try {
+                // Buscar estatísticas completas
+                const response = await fetch(`${API_URL}/inventory/summary`);
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    statusDiv.innerHTML = `
+                        <div class="flex items-center text-green-400">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            <span>Conexão estabelecida com sucesso!</span>
+                        </div>
+                        <p class="text-sm text-gray-400 mt-2">
+                            Banco de dados: Supabase | 
+                            Tabela: estoque | 
+                            Status: Online
+                        </p>
+                    `;
+                    
+                    // Atualizar estatísticas
+                    if (data.data.totalRecords !== undefined) {
+                        document.getElementById('totalRegistros').textContent = 
+                            data.data.totalRecords.toLocaleString('pt-BR');
+                        document.getElementById('produtosUnicos').textContent = 
+                            data.data.uniqueProducts || '-';
+                        document.getElementById('saldoTotal').textContent = 
+                            (data.data.totalBalance || 0).toLocaleString('pt-BR');
+                        document.getElementById('produtosBloqueados').textContent = 
+                            data.data.blockedProducts || '0';
+                        
+                        addLog(`✅ ${data.data.totalRecords} registros carregados com sucesso!`, 'success');
+                    }
+                } else {
+                    throw new Error(data.error || 'Erro ao conectar');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="flex items-center text-red-400">
+                        <i class="fas fa-times-circle mr-2"></i>
+                        <span>Erro na conexão: ${error.message}</span>
+                    </div>
+                `;
+                addLog(`❌ Erro: ${error.message}`, 'error');
+            }
+        }
+
+        async function searchProduct() {
+            const code = document.getElementById('productCode').value;
+            if (!code) {
+                alert('Digite um código de produto');
+                return;
+            }
+            
+            addLog(`🔍 Buscando produto ${code}...`, 'info');
+            const resultsDiv = document.getElementById('searchResults');
+            resultsDiv.innerHTML = '<p class="text-gray-400">Buscando...</p>';
+            
+            try {
+                const response = await fetch(`${API_URL}/inventory/product/${code}`);
+                const data = await response.json();
+                
+                if (data.success && data.data && data.data.length > 0) {
+                    const totalSaldo = data.data.reduce((sum, item) => 
+                        sum + (parseFloat(item.saldo_disponivel_produto) || 0), 0
+                    );
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="bg-gray-700 rounded-lg p-4">
+                            <h3 class="font-semibold text-lg mb-2">
+                                📦 ${data.data[0].codigo_produto} - ${data.data[0].descricao_produto}
+                            </h3>
+                            <div class="grid grid-cols-2 gap-2 text-sm">
+                                <p><span class="text-gray-400">Total de registros:</span> ${data.data.length}</p>
+                                <p><span class="text-gray-400">Saldo total:</span> ${totalSaldo.toLocaleString('pt-BR')} unidades</p>
+                                <p><span class="text-gray-400">Armazém:</span> ${data.data[0].armazem || 'N/A'}</p>
+                                <p><span class="text-gray-400">Status:</span> ${data.data[0].saldo_bloqueado_produto || 'Disponível'}</p>
+                            </div>
+                        </div>
+                    `;
+                    addLog(`✅ Produto ${code} encontrado: ${data.data.length} registros`, 'success');
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="bg-red-900/20 border border-red-500 rounded-lg p-4">
+                            <p class="text-red-400">❌ Produto ${code} não encontrado</p>
+                        </div>
+                    `;
+                    addLog(`⚠️ Produto ${code} não encontrado`, 'warning');
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="bg-red-900/20 border border-red-500 rounded-lg p-4">
+                        <p class="text-red-400">❌ Erro: ${error.message}</p>
+                    </div>
+                `;
+                addLog(`❌ Erro na busca: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAI(message) {
+            addLog(`🤖 Enviando para IA: "${message}"`, 'info');
+            const responseDiv = document.getElementById('aiResponse');
+            responseDiv.innerHTML = '<p class="text-gray-400"><i class="fas fa-spinner fa-spin mr-2"></i>Processando com 100% dos dados...</p>';
+            
+            try {
+                const response = await fetch(`${API_URL}/chat-smart`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        sessionId: 'test-' + Date.now()
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.response) {
+                    responseDiv.innerHTML = `
+                        <div class="space-y-4">
+                            <div class="flex items-start">
+                                <i class="fas fa-robot mr-3 mt-1 text-purple-400"></i>
+                                <div class="flex-1">
+                                    <p class="text-sm text-gray-400 mb-1">Resposta da IA (usando 100% dos dados):</p>
+                                    <div class="prose prose-invert">${data.response}</div>
+                                </div>
+                            </div>
+                            ${data.debug ? `
+                            <div class="mt-4 p-3 bg-gray-900 rounded text-xs">
+                                <p class="text-gray-500">Debug: ${data.debug.aiModel} | ${data.debug.processingTime}ms | Dados: ${data.debug.dataSource}</p>
+                            </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    addLog(`✅ IA respondeu com sucesso usando dados reais`, 'success');
+                } else {
+                    throw new Error(data.error || 'Sem resposta da IA');
+                }
+            } catch (error) {
+                responseDiv.innerHTML = `
+                    <div class="bg-red-900/20 border border-red-500 rounded-lg p-4">
+                        <p class="text-red-400">❌ Erro: ${error.message}</p>
+                    </div>
+                `;
+                addLog(`❌ Erro da IA: ${error.message}`, 'error');
+            }
+        }
+
+        // Iniciar testes ao carregar
+        window.addEventListener('load', () => {
+            addLog('🚀 Iniciando sistema de testes...', 'info');
+            testConnection();
+        });
+    </script>
+</body>
+</html>

@@ -4,6 +4,8 @@ import { serveStatic } from 'hono/cloudflare-workers'
 import chatRoutes from './routes/chat'
 import chatEnhancedRoutes from './routes/chat-enhanced'
 import openAIRoutes from './routes/chat-openai'
+import inventoryRoutes from './routes/inventory'
+import chatSmartRoutes from './routes/chat-smart'
 
 // Types
 type Bindings = {
@@ -26,6 +28,8 @@ app.use('/api/*', cors({
 app.route('/', chatRoutes)
 app.route('/', chatEnhancedRoutes)
 app.route('/', openAIRoutes)
+app.route('/', inventoryRoutes)
+app.route('/', chatSmartRoutes)
 
 // Note: Static files are served directly by Cloudflare Pages
 // No need for serveStatic in production
