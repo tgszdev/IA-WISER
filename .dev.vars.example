@@ -1,0 +1,12 @@
+# Exemplo de configuração - Renomeie para .dev.vars e adicione suas chaves
+# Este arquivo NÃO deve ser commitado no Git (já está no .gitignore)
+
+# Google Gemini API Key (obtenha em https://makersuite.google.com/app/apikey)
+GOOGLE_API_KEY=AIzaSy_coloque_sua_chave_aqui
+
+# Supabase Configuration (opcional - sistema usa mock data se não configurado)
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_ANON_KEY=eyJhbGc...sua_chave_aqui
+
+# Admin Password (para funções administrativas)
+ADMIN_PASSWORD=senha_admin_123
